@@ -1,0 +1,10 @@
+{
+  "reviewer": null,
+  "scope": null,
+  "project_revision": null,
+  "plan_revision": null,
+  "asset_ids": [],
+  "disposition": "not_checked",
+  "findings": [],
+  "manual_checks": []
+}

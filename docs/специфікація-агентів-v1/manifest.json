@@ -1,0 +1,71 @@
+{
+  "version": "1.0",
+  "date": "2026-10-18",
+  "knowledge_dependency": "база-знань-v1/1.0",
+  "files": [
+    {
+      "path": "01-сценарій.md",
+      "sha256": "59e028973896abeb5ff2d6a76a23d6910b50c7f80ef2d5eca5913e56a0e717e8"
+    },
+    {
+      "path": "02-спільні-інструкції.md",
+      "sha256": "f5ddc955cfe3a80e09f39273e9a9dd798b85ac8d515ddfabee31599219ee852d"
+    },
+    {
+      "path": "03-контракти.md",
+      "sha256": "7c55239998cfed30a910eaad73d58850c2ab3f46795b6a18cf4410cb6574742e"
+    },
+    {
+      "path": "04-виправлення-та-версії.md",
+      "sha256": "5c120a9e3be2278a87be5c041afc4dd43d251fb1656a29a2744932094e4d0d39"
+    },
+    {
+      "path": "05-сценарії-приймання.md",
+      "sha256": "3ef2b150e3a018e869b98e7d3850039750f178023117d5604c25ecb5f08e1e48"
+    },
+    {
+      "path": "README.md",
+      "sha256": "33e00a934d3359c419fd03407cc58ed560bbd74fb2edd53d7360ed447f9b86e9"
+    },
+    {
+      "path": "ролі/01-координатор.md",
+      "sha256": "a9d066e0b4e84e72f289a7630882cdbb3b43d1458f27d6e8319333b01e8762a4"
+    },
+    {
+      "path": "ролі/02-концепції.md",
+      "sha256": "8c0c4e5a1aadfcfa7cab786a03e16427b2b75b1ef5731fb405092f28c190d173"
+    },
+    {
+      "path": "ролі/03-конструктор.md",
+      "sha256": "9c46dceccd2cc0549158e997c821065e471aa1b7e6dd1dd5c0da7efb339530cc"
+    },
+    {
+      "path": "ролі/04-промпт.md",
+      "sha256": "0da0db809c51dc81bc6af4048298cdf9ff6962019c55568025a3af4d8dbeb82e"
+    },
+    {
+      "path": "ролі/05-генератор.md",
+      "sha256": "7f0864b7570a33ad4dda23b5cd27c58d252a913df353455eb02592ded41c1277"
+    },
+    {
+      "path": "ролі/06-технічна-перевірка.md",
+      "sha256": "bc33ff7bff293166d1101faa6ff9264ac17f31e43326aadc1d4504edd547cd99"
+    },
+    {
+      "path": "ролі/07-художня-перевірка.md",
+      "sha256": "3b6c63383267fc27c4ce884e3497baa8ff40961f970ad26bc362a7c6b0221fa5"
+    },
+    {
+      "path": "шаблони/project.json",
+      "sha256": "3f625f0d8e6fb8b6a73bb674ea23ddaa5ea4755bede8b164a9c3b10304e0d893"
+    },
+    {
+      "path": "шаблони/review.json",
+      "sha256": "a2d340a2c0dc8c15e6113f03b2e4a385d22a84d239fd954da7a73277229656ba"
+    },
+    {
+      "path": "шаблони/task.json",
+      "sha256": "556e1d53d79daa47d4dbcdb35ac5508b47b93d7f90c6deb7cb3dec2dbf97bf8e"
+    }
+  ]
+}

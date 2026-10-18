@@ -1,0 +1,20 @@
+{
+  "task_id": null,
+  "project_id": null,
+  "project_revision": null,
+  "role": null,
+  "purpose": null,
+  "inputs": {
+    "plan_revision": null,
+    "asset_ids": [],
+    "knowledge_files": [],
+    "finding_ids": []
+  },
+  "expected_output": null,
+  "constraints": {
+    "preserve": [],
+    "change_only": [],
+    "forbidden": []
+  },
+  "return_to": "coordinator"
+}

@@ -1,0 +1,607 @@
+{
+  "schema_version": 1,
+  "sampled_at": "2026-05-07T00:54:17",
+  "measurement_note": "Відтінки отримані з фотографій наданих зразків; HEX — орієнтир для вигляду морилки, а не вимога до кожного пікселя.",
+  "colors": [
+    {
+      "id": "alder",
+      "name": "Вільха",
+      "english_name": "Alder",
+      "kind": "stain",
+      "hex": "#916634",
+      "median_hex": "#916634",
+      "sample_variations": [
+        {
+          "hex": "#926735",
+          "share": 0.5713
+        },
+        {
+          "hex": "#875C2C",
+          "share": 0.1974
+        },
+        {
+          "hex": "#986F44",
+          "share": 0.0698
+        },
+        {
+          "hex": "#A57947",
+          "share": 0.05
+        },
+        {
+          "hex": "#7B5327",
+          "share": 0.0336
+        }
+      ],
+      "lightness": 0.386,
+      "texture_contrast": 0.042
+    },
+    {
+      "id": "black",
+      "name": "Чорна",
+      "english_name": "Black",
+      "kind": "stain",
+      "hex": "#2A2725",
+      "median_hex": "#292624",
+      "sample_variations": [
+        {
+          "hex": "#2D2A29",
+          "share": 0.6887
+        },
+        {
+          "hex": "#1B1919",
+          "share": 0.1081
+        },
+        {
+          "hex": "#25221E",
+          "share": 0.0748
+        },
+        {
+          "hex": "#221D1C",
+          "share": 0.0743
+        },
+        {
+          "hex": "#221E21",
+          "share": 0.0163
+        }
+      ],
+      "lightness": 0.155,
+      "texture_contrast": 0.037
+    },
+    {
+      "id": "chestnut",
+      "name": "Каштан",
+      "english_name": "Chestnut",
+      "kind": "stain",
+      "hex": "#603A2D",
+      "median_hex": "#5F392C",
+      "sample_variations": [
+        {
+          "hex": "#573427",
+          "share": 0.405
+        },
+        {
+          "hex": "#6D4537",
+          "share": 0.212
+        },
+        {
+          "hex": "#643B2E",
+          "share": 0.1821
+        },
+        {
+          "hex": "#4D291C",
+          "share": 0.1077
+        },
+        {
+          "hex": "#775044",
+          "share": 0.0575
+        }
+      ],
+      "lightness": 0.276,
+      "texture_contrast": 0.052
+    },
+    {
+      "id": "clear",
+      "name": "Чистий",
+      "english_name": "Clear / Unstained",
+      "kind": "unstained",
+      "hex": "#BAA687",
+      "median_hex": "#BBA688",
+      "sample_variations": [
+        {
+          "hex": "#BAA688",
+          "share": 0.4917
+        },
+        {
+          "hex": "#C4AD8E",
+          "share": 0.2835
+        },
+        {
+          "hex": "#AF9979",
+          "share": 0.1231
+        },
+        {
+          "hex": "#AE9D84",
+          "share": 0.0634
+        },
+        {
+          "hex": "#BAA27D",
+          "share": 0.0265
+        }
+      ],
+      "lightness": 0.629,
+      "texture_contrast": 0.031
+    },
+    {
+      "id": "mahogany",
+      "name": "Махагоні",
+      "english_name": "Mahogany",
+      "kind": "stain",
+      "hex": "#612F32",
+      "median_hex": "#602E32",
+      "sample_variations": [
+        {
+          "hex": "#673336",
+          "share": 0.4045
+        },
+        {
+          "hex": "#59292C",
+          "share": 0.3862
+        },
+        {
+          "hex": "#511D23",
+          "share": 0.0489
+        },
+        {
+          "hex": "#784447",
+          "share": 0.0485
+        },
+        {
+          "hex": "#733C42",
+          "share": 0.0454
+        }
+      ],
+      "lightness": 0.282,
+      "texture_contrast": 0.049
+    },
+    {
+      "id": "pine",
+      "name": "Сосна",
+      "english_name": "Pine",
+      "kind": "stain",
+      "hex": "#C19F42",
+      "median_hex": "#C2A043",
+      "sample_variations": [
+        {
+          "hex": "#CEAD4F",
+          "share": 0.2885
+        },
+        {
+          "hex": "#B49031",
+          "share": 0.2086
+        },
+        {
+          "hex": "#B6964A",
+          "share": 0.1091
+        },
+        {
+          "hex": "#CAA737",
+          "share": 0.0804
+        },
+        {
+          "hex": "#D1B468",
+          "share": 0.0709
+        }
+      ],
+      "lightness": 0.508,
+      "texture_contrast": 0.075
+    },
+    {
+      "id": "stained-oak",
+      "name": "Морений дуб",
+      "english_name": "Stained Oak",
+      "kind": "stain",
+      "hex": "#704F2B",
+      "median_hex": "#704F2B",
+      "sample_variations": [
+        {
+          "hex": "#71502C",
+          "share": 0.63
+        },
+        {
+          "hex": "#583815",
+          "share": 0.0855
+        },
+        {
+          "hex": "#67441C",
+          "share": 0.079
+        },
+        {
+          "hex": "#8A6A47",
+          "share": 0.0626
+        },
+        {
+          "hex": "#84623C",
+          "share": 0.0391
+        }
+      ],
+      "lightness": 0.304,
+      "texture_contrast": 0.053
+    },
+    {
+      "id": "walnut",
+      "name": "Горіх",
+      "english_name": "Walnut",
+      "kind": "stain",
+      "hex": "#9E805D",
+      "median_hex": "#9E805C",
+      "sample_variations": [
+        {
+          "hex": "#92734F",
+          "share": 0.3124
+        },
+        {
+          "hex": "#AE906D",
+          "share": 0.2762
+        },
+        {
+          "hex": "#A7845B",
+          "share": 0.0721
+        },
+        {
+          "hex": "#745632",
+          "share": 0.0543
+        },
+        {
+          "hex": "#C9AD8D",
+          "share": 0.042
+        }
+      ],
+      "lightness": 0.492,
+      "texture_contrast": 0.09
+    }
+  ],
+  "recommended_pairs": [
+    {
+      "colors": [
+        "black",
+        "walnut"
+      ],
+      "score": 100
+    },
+    {
+      "colors": [
+        "chestnut",
+        "clear"
+      ],
+      "score": 100
+    },
+    {
+      "colors": [
+        "black",
+        "clear"
+      ],
+      "score": 100
+    },
+    {
+      "colors": [
+        "black",
+        "pine"
+      ],
+      "score": 100
+    },
+    {
+      "colors": [
+        "clear",
+        "stained-oak"
+      ],
+      "score": 100
+    },
+    {
+      "colors": [
+        "mahogany",
+        "pine"
+      ],
+      "score": 100
+    },
+    {
+      "colors": [
+        "chestnut",
+        "pine"
+      ],
+      "score": 100
+    },
+    {
+      "colors": [
+        "clear",
+        "mahogany"
+      ],
+      "score": 100
+    },
+    {
+      "colors": [
+        "alder",
+        "black"
+      ],
+      "score": 100
+    },
+    {
+      "colors": [
+        "alder",
+        "clear"
+      ],
+      "score": 100
+    },
+    {
+      "colors": [
+        "clear",
+        "pine"
+      ],
+      "score": 85
+    },
+    {
+      "colors": [
+        "stained-oak",
+        "walnut"
+      ],
+      "score": 85
+    },
+    {
+      "colors": [
+        "pine",
+        "stained-oak"
+      ],
+      "score": 85
+    },
+    {
+      "colors": [
+        "mahogany",
+        "walnut"
+      ],
+      "score": 85
+    },
+    {
+      "colors": [
+        "clear",
+        "walnut"
+      ],
+      "score": 85
+    },
+    {
+      "colors": [
+        "chestnut",
+        "walnut"
+      ],
+      "score": 85
+    },
+    {
+      "colors": [
+        "alder",
+        "pine"
+      ],
+      "score": 85
+    },
+    {
+      "colors": [
+        "alder",
+        "chestnut"
+      ],
+      "score": 67
+    },
+    {
+      "colors": [
+        "alder",
+        "walnut"
+      ],
+      "score": 67
+    },
+    {
+      "colors": [
+        "alder",
+        "stained-oak"
+      ],
+      "score": 67
+    },
+    {
+      "colors": [
+        "alder",
+        "mahogany"
+      ],
+      "score": 67
+    },
+    {
+      "colors": [
+        "black",
+        "chestnut"
+      ],
+      "score": 60
+    },
+    {
+      "colors": [
+        "black",
+        "mahogany"
+      ],
+      "score": 60
+    },
+    {
+      "colors": [
+        "black",
+        "stained-oak"
+      ],
+      "score": 60
+    },
+    {
+      "colors": [
+        "pine",
+        "walnut"
+      ],
+      "score": 42
+    },
+    {
+      "colors": [
+        "chestnut",
+        "stained-oak"
+      ],
+      "score": 42
+    },
+    {
+      "colors": [
+        "mahogany",
+        "stained-oak"
+      ],
+      "score": 42
+    },
+    {
+      "colors": [
+        "chestnut",
+        "mahogany"
+      ],
+      "score": 42
+    }
+  ],
+  "recommended_triads": [
+    {
+      "colors": [
+        "black",
+        "alder",
+        "clear"
+      ],
+      "score": 97
+    },
+    {
+      "colors": [
+        "black",
+        "pine",
+        "clear"
+      ],
+      "score": 91
+    },
+    {
+      "colors": [
+        "black",
+        "walnut",
+        "clear"
+      ],
+      "score": 91
+    },
+    {
+      "colors": [
+        "chestnut",
+        "pine",
+        "clear"
+      ],
+      "score": 88
+    },
+    {
+      "colors": [
+        "mahogany",
+        "pine",
+        "clear"
+      ],
+      "score": 88
+    },
+    {
+      "colors": [
+        "black",
+        "stained-oak",
+        "clear"
+      ],
+      "score": 86
+    },
+    {
+      "colors": [
+        "black",
+        "chestnut",
+        "clear"
+      ],
+      "score": 85
+    },
+    {
+      "colors": [
+        "chestnut",
+        "walnut",
+        "clear"
+      ],
+      "score": 85
+    },
+    {
+      "colors": [
+        "black",
+        "mahogany",
+        "clear"
+      ],
+      "score": 85
+    },
+    {
+      "colors": [
+        "mahogany",
+        "walnut",
+        "clear"
+      ],
+      "score": 85
+    },
+    {
+      "colors": [
+        "stained-oak",
+        "pine",
+        "clear"
+      ],
+      "score": 84
+    },
+    {
+      "colors": [
+        "stained-oak",
+        "walnut",
+        "clear"
+      ],
+      "score": 84
+    },
+    {
+      "colors": [
+        "chestnut",
+        "alder",
+        "clear"
+      ],
+      "score": 83
+    },
+    {
+      "colors": [
+        "mahogany",
+        "alder",
+        "clear"
+      ],
+      "score": 83
+    },
+    {
+      "colors": [
+        "stained-oak",
+        "alder",
+        "clear"
+      ],
+      "score": 82
+    },
+    {
+      "colors": [
+        "chestnut",
+        "stained-oak",
+        "clear"
+      ],
+      "score": 75
+    },
+    {
+      "colors": [
+        "mahogany",
+        "stained-oak",
+        "clear"
+      ],
+      "score": 75
+    },
+    {
+      "colors": [
+        "chestnut",
+        "mahogany",
+        "clear"
+      ],
+      "score": 75
+    }
+  ]
+}

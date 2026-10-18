@@ -1,0 +1,14 @@
+.DS_Store
+node_modules/
+.env
+.env.*
+!.env.example
+*.log
+.sites-checkout/
+.sites-checkout-*/
+.sites-runtime/
+exports/
+coverage/
+playwright-report/
+test-results/
+artifacts/

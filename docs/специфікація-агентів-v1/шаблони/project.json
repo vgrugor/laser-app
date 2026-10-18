@@ -1,0 +1,45 @@
+{
+  "id": null,
+  "revision": 1,
+  "workflow_state": "draft",
+  "acceptance_status": "concept",
+  "brief": {
+    "original_request": null,
+    "product_type": null,
+    "objects": [],
+    "product_dimensions_mm": {
+      "width": null,
+      "height": null,
+      "depth": null
+    },
+    "decoration_dimensions_mm": {
+      "width": null,
+      "height": null
+    },
+    "reference_asset_ids": [],
+    "assumptions": [],
+    "unknowns": []
+  },
+  "knowledge": {
+    "version": "1.0",
+    "base_directory": "../база-знань-v1",
+    "manifest_sha256": null,
+    "palette_sha256": null,
+    "files": []
+  },
+  "concepts": [],
+  "selected_concept": null,
+  "locked_decisions": [],
+  "design_plan": null,
+  "assets": [],
+  "reviews": [],
+  "approvals": [],
+  "run_policy": {
+    "status": "proposed_default",
+    "max_automatic_revision_cycles": 2,
+    "revision_cycles_used": 0,
+    "max_generation_calls": null,
+    "generation_calls_used": 0,
+    "budget": null
+  }
+}
