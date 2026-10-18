@@ -50,7 +50,7 @@ export function createAI({current,projects,persist,snapshot,render,toast,esc,val
           if(await fingerprint(p)!==previous.fingerprint){previous.status='stale';await persist();render();continue;}
           const assets={};for(const kind of ['master','preview'])if(j.result.assets?.[kind])assets[kind]=await embed(j.id,kind);
           if(await fingerprint(p)!==previous.fingerprint){previous.status='stale';await persist();render();continue;}
-          await snapshot(p,false);
+          await snapshot(p,false,previous.action==='concepts'?'Перед оновленням концепцій':previous.action==='review'?'Перед повторною перевіркою':previous.action==='edit'?'Перед застосуванням правок ШІ':'Перед додаванням результату генерації');
           if(j.result.concepts){p.concepts=j.result.concepts.map((c,i)=>({...c,id:`${j.id}-c${i+1}`}));p.selected=null;p.prepared=false;p.conceptSource='codex';p.approved=false;p.aiReport=null;if(p.assets.master||p.assets.preview)p.pendingAssetsUpdate=['master','preview'];}
           if(Object.keys(assets).length){p.assets={...p.assets,...assets};p.example=null;p.prepared=true;p.approved=false;p.reviews={engraving:'unknown',palette:'unknown',parts:'unknown',composition:'unknown'};p.pendingAssetsUpdate=['master','preview'].filter(k=>!assets[k]);p.aiReport=null;}
           if(j.result.review){p.aiReport=j.result.review;p.approved=false;}
@@ -67,7 +67,7 @@ export function createAI({current,projects,persist,snapshot,render,toast,esc,val
     if(name==='reconnect'){await connect();refresh();await poll();}
     if(name==='cancel'){try{await request(`/api/jobs/${current().aiJob.id}/cancel`,{});toast('Запит на скасування надіслано');}catch(e){toast(e.message);}}
     if(name==='use-findings'){
-      const p=current();await snapshot(p,false);const notes=p.aiReport.findings.map(f=>`${f.location}: ${f.observation} ${f.suggested_action}`);p.notes.push(...notes.filter(n=>!p.notes.includes(n)).slice(0,100-p.notes.length));p.pendingAssetsUpdate=['master','preview'];p.approved=false;await persist();render();toast('Зауваження додано. Натисніть «Застосувати правки», щоб виконати один цикл виправлення.');
+      const p=current();await snapshot(p,false,'Перед додаванням зауважень ШІ');const notes=p.aiReport.findings.map(f=>`${f.location}: ${f.observation} ${f.suggested_action}`);p.notes.push(...notes.filter(n=>!p.notes.includes(n)).slice(0,100-p.notes.length));p.pendingAssetsUpdate=['master','preview'];p.approved=false;await persist();render();toast('Зауваження додано. Натисніть «Застосувати правки», щоб виконати один цикл виправлення.');
     }
   }
   return {panel,action,start,async init(){await connect();refresh();await poll();setInterval(poll,1800);}};
