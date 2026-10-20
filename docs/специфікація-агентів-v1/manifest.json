@@ -13,7 +13,7 @@
     },
     {
       "path": "03-контракти.md",
-      "sha256": "7c55239998cfed30a910eaad73d58850c2ab3f46795b6a18cf4410cb6574742e"
+      "sha256": "3d41185df17a39563f9bb96d32d26c9f5b11d24106b7a5c78a9adff37f28f279"
     },
     {
       "path": "04-виправлення-та-версії.md",
@@ -33,15 +33,15 @@
     },
     {
       "path": "ролі/02-концепції.md",
-      "sha256": "8c0c4e5a1aadfcfa7cab786a03e16427b2b75b1ef5731fb405092f28c190d173"
+      "sha256": "23f1af6c9772beb6fc4c8d67ebe58f4abf53b5c03a735607ea3c82c8dcf8bb74"
     },
     {
       "path": "ролі/03-конструктор.md",
-      "sha256": "9c46dceccd2cc0549158e997c821065e471aa1b7e6dd1dd5c0da7efb339530cc"
+      "sha256": "ab5d3d09ccd64328d766c7585b7495857b341a48ad83a5567568bfc889bd1a2d"
     },
     {
       "path": "ролі/04-промпт.md",
-      "sha256": "0da0db809c51dc81bc6af4048298cdf9ff6962019c55568025a3af4d8dbeb82e"
+      "sha256": "03e285a1a14222e3d85996baaa47ee6e03876d331f306e822eb7b055cb6bb3f7"
     },
     {
       "path": "ролі/05-генератор.md",
@@ -53,7 +53,7 @@
     },
     {
       "path": "ролі/07-художня-перевірка.md",
-      "sha256": "3b6c63383267fc27c4ce884e3497baa8ff40961f970ad26bc362a7c6b0221fa5"
+      "sha256": "2df3c80e2fc3b5dc429dcb216e62d57a65ce00b37b7d713a69429a253d65f244"
     },
     {
       "path": "шаблони/project.json",

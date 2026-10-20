@@ -15,3 +15,7 @@
 .assistant-draft{font:12px/1.7 system-ui,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg);padding:14px;border-radius:8px;max-height:340px;overflow:auto}.assistant-actions{flex-wrap:wrap}#type-assistant-content details{font-size:12px;margin-bottom:12px}
 
 .approval-findings{max-height:260px;overflow:auto;margin-bottom:16px}
+
+.concept-palette{margin-top:12px}.palette-dot{width:12px;height:12px;border-radius:50%;border:1px solid #0002}.palette-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.palette-option{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:9px;text-align:left}.palette-option.selected{border-color:var(--green);background:var(--pale)}.palette-option>span:last-child{margin-left:auto}.palette-sample{width:36px;height:36px;border-radius:7px;border:1px solid #0002;flex-shrink:0}
+
+.composition-review{margin-top:14px}.composition-review summary{cursor:pointer;font-size:12px;font-weight:600}.composition-check{border-bottom:1px solid var(--line);padding:10px 0;font-size:11px}.composition-check p{margin:4px 0}

@@ -1,3 +1,4 @@
+import { flatComposition, passingCompositionChecks } from './fixtures/composition.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
@@ -32,9 +33,9 @@ test('generation runs plan → prompts → master → preview → pair review an
   const dir=await temp(t),stages=[],calls=[];
   const run=async options=>{
     calls.push(options);const name=stages.at(-1);
-    if(name==='plan')return {summary:'Квітка',parts:[{name:'Пелюстки',finish_id:'clear',quantity:7,layer:'top'}],engraving:['Чорні прожилки'],composition:'Центр',manual_checks:['Ширини у CAD']};
+    if(name==='plan')return {summary:'Квітка',parts:[{name:'Пелюстки',finish_id:'clear',quantity:7,layer:'top'}],engraving:['Чорні прожилки'],composition:'Центр',spatial_composition:flatComposition,manual_checks:['Ширини у CAD']};
     if(name==='prompts')return {master:'Декор фронтально',preview:'Весь виріб'};
-    if(name==='review')return {disposition:'changes_required',findings:[{severity:'blocker',location:'Око',observation:'Світла лінія',suggested_action:'Замінити чорною'}],manual_checks:['2 мм у CAD']};
+    if(name==='review')return {disposition:'changes_required',findings:[{severity:'blocker',location:'Око',observation:'Світла лінія',suggested_action:'Замінити чорною'}],composition_checks:passingCompositionChecks(),manual_checks:['2 мм у CAD']};
     const path=resolve(dir,name+'-generated.png');await writeFile(path,png);return 'GENERATED_IMAGE '+path;
   };
   const partials=[];
@@ -48,7 +49,7 @@ test('edit uses existing master as first reference; failures retain completed ma
   const dir=await temp(t),stages=[],partials=[];
   const run=async o=>{
     const name=stages.at(-1);
-    if(name==='plan')return {parts:[{finish_id:'clear',quantity:1,layer:'top'}]};
+    if(name==='plan')return {parts:[{name:'Мотив',finish_id:'clear',quantity:1,layer:'top'}],spatial_composition:flatComposition};
     if(name==='prompts')return {master:'Правка',preview:'Виріб'};
     if(name==='master'){assert.equal(o.images[0],resolve(dir,'input-master.png'));const path=resolve(dir,'edited.png');await writeFile(path,png);return 'EDITED_IMAGE '+path;}
     throw Error('Generator unavailable');
