@@ -1,9 +1,9 @@
 const labels={concepts:'Створення 10 концепцій',plan:'План деталей',prompts:'Підготовка промптів',master:'Фронтальний декор',preview:'Вигляд виробу',review:'Перевірка зображень'};
-export function createAI({current,projects,persist,snapshot,render,toast,esc,validate}){
+export function createAI({getTypeRevision=()=>undefined,current,projects,persist,snapshot,render,toast,esc,validate}){
   let connection=null,connectionError='',polling=false;
   const busy=p=>p?.aiJob&&['running','queued'].includes(p.aiJob.status);
   const fingerprint=async p=>{
-    const value=JSON.stringify([p.title,p.type,p.clockMount||'unspecified',p.width,p.height,p.brief,p.palette,p.layers,p.frame,p.reference,p.assets,p.notes,p.locks,p.selected,p.concepts]);
+    const value=JSON.stringify([getTypeRevision(p),p.title,p.type,p.clockMount||'unspecified',p.width,p.height,p.brief,p.palette,p.layers,p.frame,p.reference,p.assets,p.notes,p.locks,p.selected,p.concepts]);
     return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');
   };
   async function connect(){
@@ -28,6 +28,7 @@ export function createAI({current,projects,persist,snapshot,render,toast,esc,val
     try{
       // Send only the active revision, never its potentially large version history.
       const {versions,aiJob,aiReport,aiData,...project}=structuredClone(p);
+      project.typeRevision=getTypeRevision(p);
       const revision=await fingerprint(p);
       const response=await request('/api/jobs',{action,project});
       p.aiJob={id:response.id,action,fingerprint:revision,status:'running',stage:'Підготовка'};

@@ -57,7 +57,7 @@ test('edit uses existing master as first reference; failures retain completed ma
   assert.equal(partials[0].assets.master,'master.png');assert.ok(await readFile(resolve(dir,'master.png')));
 });
 test('local HTTP lifecycle, anti-CSRF, cancellation and restart recovery',async t=>{
-  const dir=await temp(t);await mkdir(resolve(dir,'dist'));await writeFile(resolve(dir,'dist/index.html'),'<h1>Test</h1>');
+  const dir=await temp(t);await mkdir(resolve(dir,'dist'));await writeFile(resolve(dir,'dist/index.html'),'<h1>Test</h1>');await writeFile(resolve(dir,'dist/product-types.json'),await readFile(resolve(root,'dist/product-types.json')));
   let inference=0;
   const app=await createApp({root:dir,run:()=>{},runWorkflow:async({signal,stage})=>{inference++;await stage('concepts');await new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(Error('cancelled')),{once:true}));}});
   await new Promise(r=>app.server.listen(0,'127.0.0.1',r));t.after(()=>app.close());

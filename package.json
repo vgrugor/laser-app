@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node server/index.mjs",
     "start": "node server/index.mjs",
-    "check": "node --check dist/app.js && node --check dist/ai.js && node --check server/index.mjs && node --check server/workflow.mjs",
+    "check": "node --check dist/app.js && node --check dist/ai.js && node --check server/index.mjs && node --check server/workflow.mjs && node --check dist/product-types.js && node --check dist/catalog-ui.js && node --check server/catalog.mjs && node --check dist/type-assistant.js && node --check server/type-assistant.mjs",
     "sdk:probe": "node scripts/probe-codex-sdk.mjs",
     "test": "node --test tests/*.test.mjs"
   },
