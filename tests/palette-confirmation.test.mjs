@@ -1,9 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createPaletteConfirmation,paletteIsConfirmed,paletteSignature } from '../dist/palette-confirmation.js';
+import { createPaletteConfirmation,paletteIsConfirmed,paletteSignature,paletteChoice } from '../dist/palette-confirmation.js';
 import { createAI } from '../dist/ai.js';
 
 const colors=[{id:'clear',name:'Чистий',hex:'#BAA687'},{id:'pine',name:'Сосна',hex:'#C19F42'},{id:'alder',name:'Вільха',hex:'#916634'},{id:'walnut',name:'Горіх',hex:'#9E805D'},{id:'black',name:'Чорна',hex:'#2A2725'}];
+test('inline palette selection swaps a single-layer finish and enforces multi-layer limits',()=>{
+  const p={layers:1,palette:['clear']};
+  assert.deepEqual(paletteChoice(p,'pine').palette,['pine']);assert.ok(paletteChoice(p,'clear').error);
+  assert.deepEqual(p.palette,['clear']);
+  p.layers=2;p.palette=['clear','pine','alder'];
+  assert.ok(paletteChoice(p,'walnut').error);assert.deepEqual(paletteChoice(p,'black').palette,['clear','pine','alder','black']);
+});
 function setup(t){
   const old=globalThis.document;t.after(()=>{globalThis.document=old;});
   const buttons=colors.map(c=>({dataset:{paletteChoice:c.id}})),nodes=new Map();
@@ -17,6 +24,12 @@ test('first confirmation is explicit, repeat is skipped and changed palette need
   const s=setup(t),promise=s.controller.ensure(s.p);assert.equal(paletteIsConfirmed(s.p),false);assert.ok(s.html.includes('Агент може використати лише частину'));
   await s.nodes.get('#confirm-concept-palette').onclick();assert.equal(await promise,true);assert.equal(paletteIsConfirmed(s.p),true);assert.equal(await s.controller.ensure(s.p),true);
   s.p.palette=['clear'];assert.equal(paletteIsConfirmed(s.p),false);assert.notEqual(s.p.paletteConfirmation.signature,paletteSignature(s.p));
+});
+test('explicit launch from the palette step confirms the visible selection without a second dialog',async t=>{
+  const s=setup(t);await s.controller.confirmCurrent(s.p);
+  assert.equal(paletteIsConfirmed(s.p),true);assert.equal(s.p.paletteConfirmation.actor,'user');
+  assert.equal(await s.controller.ensure(s.p),true);assert.equal(s.html,'');
+  s.p.palette=['clear'];assert.equal(paletteIsConfirmed(s.p),false);
 });
 test('cancel discards draft colors and does not confirm or change project',async t=>{
   const s=setup(t),promise=s.controller.ensure(s.p);s.buttons.find(b=>b.dataset.paletteChoice==='pine').onclick();

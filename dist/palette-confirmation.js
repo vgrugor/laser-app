@@ -1,6 +1,13 @@
 export const paletteSignature=p=>JSON.stringify([p.layers,[...p.palette].sort()]);
 export const paletteIsConfirmed=p=>p.paletteConfirmation?.signature===paletteSignature(p);
 
+export function paletteChoice(p,id){
+  if(p.palette.includes(id))return p.palette.length===1?{error:'Потрібно залишити хоча б одне оздоблення.'}:{palette:p.palette.filter(value=>value!==id)};
+  if(p.layers===1)return {palette:[id]};
+  const palette=[...p.palette,id];
+  return palette.length>4||(palette.length===4&&!palette.includes('black'))?{error:'До 3 оздоблень; четвертим може бути лише «Чорна».'}:{palette};
+}
+
 export function createPaletteConfirmation({colors,esc,modal,dialog,close,current,persist,render,onChange}){
   let pending=null;
   function summary(p){return `<div class="concept-palette"><span class="hint">Доступні морилки: ${paletteIsConfirmed(p)?'підтверджено':'потрібно підтвердити'}</span><div class="actions-wrap">${p.palette.map(id=>{const color=colors.find(c=>c.id===id);return color?`<span class="chip"><span class="palette-dot" style="background:${color.hex}"></span>${esc(color.name)}</span>`:'';}).join('')}<button class="btn tiny" data-action="palette-edit">Змінити палітру</button></div></div>`;}
@@ -38,5 +45,8 @@ export function createPaletteConfirmation({colors,esc,modal,dialog,close,current
     };
     return promise;
   }
-  return {ensure,summary};
+  return {ensure,summary,async confirmCurrent(p){
+    p.paletteConfirmation={signature:paletteSignature(p),confirmedAt:new Date().toISOString(),actor:'user'};
+    await persist();
+  }};
 }

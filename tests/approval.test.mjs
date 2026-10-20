@@ -29,7 +29,7 @@ test('changed images or AI report invalidate the open confirmation',async t=>{
 });
 test('missing images, outdated assets and user-entered failures still require resolution',async t=>{
   const s=setup(t);
-  for(const p of [{...s.p,pendingAssetsUpdate:['master']},{...s.p,assets:{master:null,preview:'image'}},{...s.p,reviews:{parts:'fail'}}])assert.ok(approvalBlocker(p));
+  for(const p of [{...s.p,pendingAssetsUpdate:['master']},{...s.p,assets:{master:null,preview:'image'}},{...s.p,reviews:{parts:'fail'}},{...s.p,aiJob:{status:'running'}}])assert.ok(approvalBlocker(p));
   assert.equal(approvalBlocker(s.p),null);
 });
 test('new edits clear both approval and the AI-remarks acceptance record',async t=>{

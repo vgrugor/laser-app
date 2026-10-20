@@ -1,9 +1,11 @@
+import { moveToRoute } from './project-route.js';
 export function invalidateApproval(project){project.approved=false;project.approvedAt=null;project.appearanceApproval=null;}
 export async function approvalSignature(p,typeRevision){
   const value=JSON.stringify([typeRevision,p.id,p.title,p.type,p.clockMount,p.width,p.height,p.layers,p.frame,p.brief,p.palette,p.reference,p.assets,p.selected,p.concepts,p.notes,p.locks,p.pendingAssetsUpdate,p.reviews,p.aiReport]);
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');
 }
 export function approvalBlocker(p){
+  if(['running','queued'].includes(p.aiJob?.status))return 'Дочекайтеся завершення поточного завдання перед прийняттям виробу.';
   if(p.pendingAssetsUpdate?.length)return 'Зображення ще відповідають попередньому завданню. Додайте оновлені вигляд і декор.';
   if(!p.assets?.master||!p.assets?.preview)return 'Спочатку додайте обидва зображення.';
   if(Object.values(p.reviews||{}).includes('fail'))return 'У вашій ручній перевірці є позначка «Потрібна правка». Перегляньте її перед погодженням.';
@@ -25,6 +27,7 @@ export function createApproval({esc,modal,close,toast,persist,snapshot,render,ge
         const at=new Date().toISOString();
         p.approved=true;p.approvedAt=at;p.updatedAt=at;
         p.appearanceApproval={actor:'user',scope:'appearance',at,revisionSignature:signature,aiRemarksAccepted:override,comment:override?(document.querySelector('#approval-reason')?.value||'').trim().slice(0,2000):'',aiReview:structuredClone(p.aiReport||null)};
+        moveToRoute(p,'saved');
         await snapshot(p,false,override?'Погоджено користувачем попри зауваження ШІ':'Погоджено користувачем');
         await persist();close();render();toast(override?'Вигляд погоджено вами попри зауваження ШІ.':'Зовнішній вигляд погоджено вами.');
       }catch{toast('Не вдалося зберегти погодження. Спробуйте ще раз.');}
