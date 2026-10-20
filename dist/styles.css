@@ -13,3 +13,5 @@
 .type-rules{min-height:310px}#type-editor-message{color:var(--amber);white-space:pre-wrap}
 
 .assistant-draft{font:12px/1.7 system-ui,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg);padding:14px;border-radius:8px;max-height:340px;overflow:auto}.assistant-actions{flex-wrap:wrap}#type-assistant-content details{font-size:12px;margin-bottom:12px}
+
+.approval-findings{max-height:260px;overflow:auto;margin-bottom:16px}
