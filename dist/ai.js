@@ -3,7 +3,7 @@ export function createAI({current,projects,persist,snapshot,render,toast,esc,val
   let connection=null,connectionError='',polling=false;
   const busy=p=>p?.aiJob&&['running','queued'].includes(p.aiJob.status);
   const fingerprint=async p=>{
-    const value=JSON.stringify([p.title,p.type,p.width,p.height,p.brief,p.palette,p.layers,p.frame,p.reference,p.assets,p.notes,p.locks,p.selected,p.concepts]);
+    const value=JSON.stringify([p.title,p.type,p.clockMount||'unspecified',p.width,p.height,p.brief,p.palette,p.layers,p.frame,p.reference,p.assets,p.notes,p.locks,p.selected,p.concepts]);
     return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');
   };
   async function connect(){

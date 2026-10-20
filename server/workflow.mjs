@@ -15,13 +15,14 @@ export const schemas = {
 };
 const paletteIDs=['alder','black','chestnut','clear','mahogany','pine','stained-oak','walnut'];
 export function validateProject(p) {
-  if(!p || !['Шкатулка','Підставка','Ключниця','Панно','Ікона','Годівничка','Брелок'].includes(p.type))throw Error('Невідомий тип виробу');
+  if(!p || !['Шкатулка','Підставка','Ключниця','Панно','Ікона','Годівничка','Брелок','Годинник'].includes(p.type))throw Error('Невідомий тип виробу');
   for(const k of ['title','brief'])if(typeof p[k]!=='string'||!p[k].trim()||p[k].length>4000)throw Error('Некоректний опис');
   if(!Number.isFinite(p.width)||!Number.isFinite(p.height)||p.width<20||p.height<20||!((p.width<=300&&p.height<=400)||(p.width<=400&&p.height<=300)))throw Error('Розміри не вміщуються в лист 300 × 400 мм');
   if(!Array.isArray(p.palette)||!p.palette.length||new Set(p.palette).size!==p.palette.length||p.palette.some(x=>!paletteIDs.includes(x))||p.palette.length>4||(p.palette.length===4&&!p.palette.includes('black')))throw Error('Некоректна палітра');
   if(![1,2].includes(p.layers)||!['engraved','cut','none'].includes(p.frame)||(p.layers===1&&(p.palette.length!==1||p.frame==='cut')))throw Error('Некоректна конструкція декору');
   if(!Array.isArray(p.notes)||!Array.isArray(p.locks)||[...p.notes,...p.locks].some(x=>typeof x!=='string'||x.length>4000)||p.notes.length>100||p.locks.length>20)throw Error('Некоректні правки');
-  return {title:p.title,brief:p.brief,type:p.type,width:p.width,height:p.height,palette:p.palette,layers:p.layers,frame:p.frame,notes:p.notes,locks:p.locks,concept:(p.concepts||[]).find(c=>c.id===p.selected)||null};
+  if(p.type==='Годинник'&&p.clockMount!==undefined&&!['wall','stand','unspecified'].includes(p.clockMount))throw Error('Некоректне встановлення годинника');
+  return {title:p.title,clockMount:p.type==='Годинник'?(p.clockMount||'unspecified'):null,brief:p.brief,type:p.type,width:p.width,height:p.height,palette:p.palette,layers:p.layers,frame:p.frame,notes:p.notes,locks:p.locks,concept:(p.concepts||[]).find(c=>c.id===p.selected)||null};
 }
 export function validateResult(kind, data, p) {
   if(kind==='concepts'){
