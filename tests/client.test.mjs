@@ -141,3 +141,17 @@ test('failed review launch keeps its error visible and preserves the previous im
   await ai.start('review');assert.equal(p.aiLaunchAction,'edit');assert.equal(ai.resultContext().reviewLaunchError,'Спробуйте пізніше');
   const {resultInspector}=await import('../dist/result.js');assert.match(resultInspector(p,{esc:String,...ai.resultContext()}),/Не вдалося розпочати перевірку: Спробуйте пізніше/);
 });
+
+test('starting concepts opens their step before connecting, and stays there while the job runs or fails',async t=>{
+  const {paletteSignature}=await import('../dist/palette-confirmation.js');
+  const {ai,p}=setup(t,()=>({id:'job1',status:'running',stage:'concepts',result:null}));
+  p.approved=false;p.concepts=[];p.assets={master:null,preview:null};p.route={version:2,current:'palette'};p.paletteConfirmation={signature:paletteSignature(p)};
+  const request=globalThis.fetch;let release,arrived;
+  const connecting=new Promise(resolve=>arrived=resolve);
+  globalThis.fetch=(path,options)=>path==='/api/status'?new Promise(resolve=>{release=()=>resolve({ok:true,json:async()=>({provider:'codex-sdk',token:'test'})});arrived();}):request(path,options);
+  const start=ai.start('concepts');await connecting;
+  assert.equal(p.route.current,'concepts');assert.equal(p.aiJob,undefined);assert.equal(ai.isLaunching(p),true);
+  release();await start;assert.equal(p.route.current,'concepts');assert.equal(p.aiJob.status,'running');assert.equal(ai.isLaunching(p),false);
+  globalThis.fetch=(path,options)=>path==='/api/status'?request(path,options):path==='/api/jobs/job1'?Promise.resolve({ok:true,json:async()=>({id:'job1',status:'failed',stage:'concepts',error:'Test',result:null})}):request(path,options);
+  await ai.action('reconnect');assert.equal(p.route.current,'concepts');assert.equal(p.aiJob.status,'failed');
+});

@@ -50,6 +50,7 @@ export function createAI({prepareStart=async p=>p,getTypeRevision=()=>undefined,
       p.aiLaunchErrorAction=action;p.aiLaunchError=null;
       if(['generate','edit'].includes(action))p.aiLaunchAction=action;
       if(['generate','edit'].includes(action))moveToRoute(p,'generation');
+      if(action==='concepts')moveToRoute(p,'concepts');
       await persist();render();
       await connect();if(!connection){launchErrors.set(p.id,connectionError);p.aiLaunchError=connectionError;await persist();render();toast('Для генерації потрібен локальний сервер');return;}
       if(action==='edit'&&!p.notes.length){toast('Спочатку додайте опис правки');return;}
@@ -60,7 +61,7 @@ export function createAI({prepareStart=async p=>p,getTypeRevision=()=>undefined,
       const revision=await fingerprint(p);
       const response=await request('/api/jobs',{action,project});
       p.aiJob={id:response.id,action,fingerprint:revision,status:'running',stage:'Підготовка'};
-      moveToRoute(p,action==='concepts'?'palette':['generate','edit'].includes(action)?'generation':'result');
+      moveToRoute(p,action==='concepts'?'concepts':['generate','edit'].includes(action)?'generation':'result');
       await persist();render();await poll();return response.id;
     }catch(e){launchErrors.set(p.id,e.message);p.aiLaunchError=e.message;await persist();toast(e.message);render();}
     finally{launching.delete(ownerId);launching.delete(p.id);refresh();}
@@ -105,5 +106,5 @@ export function createAI({prepareStart=async p=>p,getTypeRevision=()=>undefined,
       const p=current();await snapshot(p,false,'Перед додаванням зауважень ШІ');const notes=p.aiReport.findings.map(f=>`${f.location}: ${f.observation} ${f.suggested_action}`);p.notes.push(...notes.filter(n=>!p.notes.includes(n)).slice(0,100-p.notes.length));p.pendingAssetsUpdate=['master','preview'];invalidateApproval(p);await persist();render();toast('Зауваження додано. Натисніть «Застосувати правки», щоб виконати один цикл виправлення.');
     }
   }
-  return {panel,generation,action,start,resultContext:()=>({connectionError,reviewLaunchError:current()?.aiLaunchErrorAction==='review'?current().aiLaunchError||'':''}),async init(){await connect();refresh();await poll();setInterval(poll,1800);}};
+  return {panel,generation,action,start,isLaunching:p=>launching.has(p.id),resultContext:()=>({connectionError,reviewLaunchError:current()?.aiLaunchErrorAction==='review'?current().aiLaunchError||'':''}),async init(){await connect();refresh();await poll();setInterval(poll,1800);}};
 }

@@ -15,6 +15,13 @@ export function selectConcept(p, id) {
   return true;
 }
 
+export function emptyConceptScreen(p, { launching = false } = {}) {
+  const working = ['running','queued'].includes(p.aiJob?.status);
+  const starting = launching && !working && !p.aiLaunchError;
+  const stopped = p.aiLaunchErrorAction === 'concepts' && p.aiLaunchError || p.aiJob?.action === 'concepts' && ['failed','cancelled','interrupted','stale'].includes(p.aiJob.status);
+  return `<div class="panel"><h3>${working?'Створюємо 10 концепцій':starting?'Готуємо створення концепцій':'Набір концепцій ще не створено'}</h3><p>${working||starting?'Коли концепції будуть готові, вони з’являться тут для вибору. Створення зображень почнеться лише після вашого вибору.':stopped?'Перегляньте повідомлення про зупинку вище та повторіть запуск, коли будете готові.':'Палітру підтверджено. Можна створити десять текстових концепцій.'}</p>${!working&&!starting?`<button class="btn primary" data-action="concepts">${stopped?'Повторити створення концепцій':'Створити 10 концепцій'}</button>`:''}<div class="project-extra"><button class="btn" data-step="palette">Назад: палітра</button></div></div>`;
+}
+
 export function conceptScreen(p, { esc, colors }) {
   const selected = p.concepts.find(c => c.id === p.selected);
   const issue = conceptIssue(p, selected);

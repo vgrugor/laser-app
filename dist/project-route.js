@@ -38,7 +38,7 @@ export function projectRoute(p) {
   const available = {
     brief: true,
     palette: brief || historical,
-    concepts: hasConcepts || (brief && palette),
+    concepts: hasConcepts || (job?.action === 'concepts' && Boolean(job.id)) || (brief && palette),
     generation: selected || hasImage || (imageJob && Boolean(job?.id)),
     result: hasImage,
     saved: approved,
@@ -58,6 +58,7 @@ export function projectRoute(p) {
   if (!brief && (p.brief?.trim() || p.width || p.height)) attention('brief', 'Уточніть опис, тип і габарити виробу.');
   if (!palette && !historical && brief) attention('palette', 'Підтвердьте доступні морилки.');
   if (hasConcepts && !selected) attention('concepts', 'Оберіть одну зі збережених концепцій.');
+  if (p.aiLaunchErrorAction === 'concepts' && p.aiLaunchError) attention('concepts', 'Не вдалося розпочати створення концепцій. Повторіть запуск.');
   if (p.pendingAssetsUpdate?.length) attention('generation', 'Зображення потрібно оновити після змін.');
   if (hasImage && !approved) {
     attention('result', !pair ? 'Потрібні обидва зображення: вигляд і декор.'
@@ -77,7 +78,7 @@ export function projectRoute(p) {
     attention(jobStep, reasons[job.status]);
   }
   const fallback = running && imageJob ? 'generation'
-    : running && job?.action === 'concepts' ? 'palette'
+    : running && job?.action === 'concepts' ? 'concepts'
     : approved ? 'saved' : hasImage ? 'result'
     : imageJob && job?.id ? 'generation'
     : selected && p.prepared ? 'generation' : hasConcepts ? 'concepts'

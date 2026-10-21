@@ -24,3 +24,13 @@ test('concepts incompatible with changed colors or a one-layer construction cann
   assert.match(conceptIssue(p, p.concepts[0]), /інкрустації/);
   assert.equal(selectConcept(p, 'missing'), false);
 });
+
+test('empty concept step waits during startup and running work, then offers retry on failure or cancellation',async()=>{
+  const {emptyConceptScreen}=await import('../dist/concepts.js');
+  const p={concepts:[]};
+  assert.match(emptyConceptScreen(p,{launching:true}),/Готуємо створення концепцій/);
+  assert.doesNotMatch(emptyConceptScreen(p,{launching:true}),/data-action="concepts"/);
+  p.aiJob={action:'concepts',status:'running'};assert.match(emptyConceptScreen(p),/Створюємо 10 концепцій/);assert.doesNotMatch(emptyConceptScreen(p),/data-action="concepts"/);
+  p.aiJob.status='cancelled';assert.match(emptyConceptScreen(p),/Повторити створення концепцій/);
+  p.aiJob=null;p.aiLaunchErrorAction='concepts';p.aiLaunchError='Немає сервера';assert.match(emptyConceptScreen(p,{launching:true}),/Повторити створення концепцій/);
+});

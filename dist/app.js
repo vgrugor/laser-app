@@ -1,7 +1,7 @@
 import { savedScreen, passportText } from './saved.js';
 import { createVariant, mustForkForChange, needsSourceCheckpoint, markSourceChanged, variantNotice, generationBasis } from './variants.js';
 import { resultScreen, resultInspector, resultActions, revisionNotes } from './result.js';
-import { conceptScreen, conceptIssue, selectConcept } from './concepts.js';
+import { conceptScreen, emptyConceptScreen, conceptIssue, selectConcept } from './concepts.js';
 import { projectShell, projectSummary, projectStageHeading, routeNavigation, ROUTE_HINTS } from './project-shell.js';
 import { migrateStoredState, writeAppState, STATE_VERSION, importedConceptSelection } from './project-state.js';
 import { projectRoute, ensureRoute, moveToRoute, briefIsReady } from './project-route.js';
@@ -65,7 +65,7 @@ function refreshProjectContext(){
 
 function routeContent(p){
   const step=ensureRoute(p);
-  if(step==='concepts')return p.concepts.length?conceptScreen(p,{esc,colors}):`<div class="panel"><h2>Набір концепцій ще не створено</h2><p>На кроці палітри перевірте кольори та запустіть створення десяти варіантів.</p><button class="btn primary" data-step="palette">До палітри</button></div>`;
+  if(step==='concepts')return p.concepts.length?conceptScreen(p,{esc,colors}):emptyConceptScreen(p,{launching:ai.isLaunching(p)});
   if(step==='generation')return ai.generation(p);
   if(step==='saved')return savedScreen(p,{esc,icon,safeImage,view,colors,versions:versionList(p)});
   if(step==='result')return result(p);

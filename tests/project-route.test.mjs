@@ -84,3 +84,10 @@ test('launch failures and interrupted jobs are expanded in the shell instead of 
   const p=draft();p.route={version:2,current:'palette'};p.aiLaunchError='Сервер зайнятий';
   const html=projectShell(p,{esc:String,colors:[],content:'Палітра',aiPanel:'Помилка запуску'});assert.match(html,/<details class="project-ai-tools" open>/);
 });
+
+test('concept jobs restore on the concept step even without historical palette confirmation',()=>{
+ const p=draft();p.aiJob={id:'concept-job',action:'concepts',status:'running'};
+ assert.equal(ensureRoute(p),'concepts');assert.equal(projectRoute(p).steps.find(s=>s.id==='concepts').status,'running');
+ assert.equal(moveToRoute(p,'palette'),true);assert.equal(ensureRoute(p),'palette');
+ p.route.current='concepts';p.aiJob.status='cancelled';assert.equal(ensureRoute(p),'concepts');
+});
