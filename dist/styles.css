@@ -180,3 +180,7 @@
 @media(max-width:1000px){.project-shell.saved-layout{grid-template-columns:minmax(0,1fr)}.saved-layout .project-stage{grid-row:2}.saved-product-grid{grid-template-columns:minmax(0,1fr) 260px}}
 @media(max-width:760px){.saved-product-grid{grid-template-columns:minmax(0,1fr)}.saved-confirmation{align-items:stretch;flex-direction:column}.saved-downloads .btn{flex:1 1 100%}.saved-specification .project-facts{grid-template-columns:minmax(0,1fr)}.saved-specification .project-facts dt{margin-top:12px}.saved-specification .project-facts dd{margin-top:0}.saved-variants .btn{width:100%}}
 .saved-confirmation .badge{white-space:normal}
+
+.version-filter{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.version-filter .btn.active{background:var(--green);border-color:var(--green);color:white}
+@media(max-width:600px){.version-filter .btn{flex:1 1 auto;white-space:normal}}
