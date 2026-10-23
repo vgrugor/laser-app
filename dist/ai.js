@@ -1,3 +1,4 @@
+import { imageAction, recordConceptRun } from './concept-history.js';
 import { generationScreen } from './generation.js';
 import { conceptIssue } from './concepts.js';
 import { moveToRoute, routeAfterJob, projectRoute } from './project-route.js';
@@ -41,34 +42,61 @@ export function createAI({prepareStart=async p=>p,getTypeRevision=()=>undefined,
 
   async function start(action){
     let p=current();if(!p||busy(p)||launching.has(p.id))return;
+    let sourceConcept=null,attemptAt=null,submitted=null;
     const ownerId=p.id;launching.add(ownerId);launchErrors.delete(ownerId);
     try{
       const prepared=await prepareStart(p,action);if(!prepared)return;p=prepared;launching.add(p.id);
       if(current()!==p||busy(p))return;
       if(action==='concepts'&&!await confirmPalette(p))return;
       if(current()!==p||busy(p)||!validate(p))return;
+      if(imageAction(action)){sourceConcept=p.concepts?.find(c=>c.id===p.selected)||null;attemptAt=new Date().toISOString();}
       p.aiLaunchErrorAction=action;p.aiLaunchError=null;
       if(['generate','edit'].includes(action))p.aiLaunchAction=action;
       if(['generate','edit'].includes(action))moveToRoute(p,'generation');
       if(action==='concepts')moveToRoute(p,'concepts');
       await persist();render();
-      await connect();if(!connection){launchErrors.set(p.id,connectionError);p.aiLaunchError=connectionError;await persist();render();toast('Для генерації потрібен локальний сервер');return;}
+      await connect();if(!connection){launchErrors.set(p.id,connectionError);p.aiLaunchError=connectionError;failedLaunch(p,sourceConcept,action,attemptAt,connectionError);await persist();render();toast('Для генерації потрібен локальний сервер');return;}
       if(action==='edit'&&!p.notes.length){toast('Спочатку додайте опис правки');return;}
-      const {versions,aiJob,aiReport,aiData,resultDraft,aiLaunchAction,aiLaunchError,aiLaunchErrorAction,...project}=structuredClone(p);
+      const {versions,aiJob,aiReport,aiData,resultDraft,aiLaunchAction,aiLaunchError,aiLaunchErrorAction,conceptRuns,...project}=structuredClone(p);
       project.typeRevision=getTypeRevision(p);
       if(action==='generate'&&p.selected){const concept=p.concepts.find(c=>c.id===p.selected),issue=conceptIssue(p,concept);if(issue){toast(issue);return;}project.palette=[...(concept.palette||p.palette)];project.frame=concept.frame;}
       if(action==='review'&&aiData?.plan)project.designPlan=aiData.plan;
+      if(imageAction(action))sourceConcept=project.concepts?.find(c=>c.id===project.selected)||null;
       const revision=await fingerprint(p);
       const response=await request('/api/jobs',{action,project});
-      p.aiJob={id:response.id,action,fingerprint:revision,status:'running',stage:'Підготовка'};
+      submitted=response.id;p.aiJob={id:response.id,action,conceptId:sourceConcept?.id||null,conceptTitle:sourceConcept?.title||'',startedAt:attemptAt,fingerprint:revision,status:'running',stage:'Підготовка'};
+      recordConceptRun(p,{id:response.id,jobId:response.id,conceptId:sourceConcept?.id,conceptTitle:sourceConcept?.title||'',projectId:p.id,projectTitle:project.title,action,status:'running',startedAt:attemptAt,assets:{}});
       moveToRoute(p,action==='concepts'?'concepts':['generate','edit'].includes(action)?'generation':'result');
       await persist();render();await poll();return response.id;
-    }catch(e){launchErrors.set(p.id,e.message);p.aiLaunchError=e.message;await persist();toast(e.message);render();}
+    }catch(e){if(!submitted)failedLaunch(p,sourceConcept,action,attemptAt,e.message);launchErrors.set(p.id,e.message);p.aiLaunchError=e.message;await persist();toast(e.message);render();}
     finally{launching.delete(ownerId);launching.delete(p.id);refresh();}
+  }
+  function failedLaunch(p,concept,action,startedAt,error){
+    if(!concept||conceptIssue(p,concept))return;
+    recordConceptRun(p,{id:'launch-'+crypto.randomUUID(),jobId:null,conceptId:concept.id,conceptTitle:concept.title,projectId:p.id,projectTitle:p.title,action,status:'failed',startedAt,finishedAt:new Date().toISOString(),assets:{},error});
+  }
+  function finishRun(p,job){
+    if(!job.conceptId)return;
+    const assets={};for(const kind of job.appliedAssets||[])if(p.assets[kind])assets[kind]=p.assets[kind];
+    recordConceptRun(p,{id:job.id,jobId:job.id,conceptId:job.conceptId,conceptTitle:job.conceptTitle||'',projectId:p.id,projectTitle:p.conceptRuns?.find(r=>r.id===job.id)?.projectTitle||p.title,action:job.action,status:job.status,startedAt:job.startedAt||new Date().toISOString(),finishedAt:job.finishedAt||new Date().toISOString(),assets,error:job.error||null});
   }
   async function embed(jobId,kind){
     const r=await fetch(`/api/assets/${jobId}/${kind}.png`);if(!r.ok)throw Error('Не вдалося отримати зображення');
     const b=await r.blob();return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(b);});
+  }
+  async function restoreConceptRuns(){
+    if(!connection)return;
+    const known=new Set(projects().flatMap(p=>(p.conceptRuns||[]).map(r=>r.id))),candidates=new Map();
+    for(const p of projects())for(const data of [p,...(p.versions||[]).map(v=>v.data)]){
+      for(const id of [data?.aiData?.jobId,imageAction(data?.aiJob?.action)?data.aiJob.id:null])if(id&&!known.has(id)&&!candidates.has(id))candidates.set(id,p);
+    }
+    let changed=false;
+    for(const [id,p] of candidates){try{
+      const job=await request(`/api/jobs/${id}`);if(!job.conceptId||!imageAction(job.action))continue;
+      const assets={};if(!['running','queued'].includes(job.status))for(const kind of ['master','preview'])if(job.result?.assets?.[kind])assets[kind]=await embed(job.id,kind);
+      recordConceptRun(p,{id:job.id,jobId:job.id,conceptId:job.conceptId,conceptTitle:job.conceptTitle||'',projectId:job.projectId||p.id,projectTitle:job.projectTitle||p.title,action:job.action,status:job.status,startedAt:job.createdAt||new Date().toISOString(),finishedAt:job.finishedAt||null,assets,error:job.error||null});changed=true;
+    }catch{/* Missing historical files never prevent opening the current project. */}}
+    if(changed){await persist();render();}
   }
   async function poll(){
     if(polling||!connection)return;polling=true;
@@ -76,23 +104,25 @@ export function createAI({prepareStart=async p=>p,getTypeRevision=()=>undefined,
       for(const p of projects().filter(busy)){
         const previous=p.aiJob,j=await request(`/api/jobs/${previous.id}`);
         if(p.aiJob!==previous)continue;
+        if(!previous.conceptId&&j.conceptId){previous.conceptId=j.conceptId;previous.conceptTitle=j.conceptTitle||'';previous.startedAt=j.createdAt;}
         connectionError='';
         const availableAssets=Object.keys(j.result?.assets||{}).filter(kind=>['master','preview'].includes(kind));
         const changed=previous.stage!==j.stage||JSON.stringify(previous.availableAssets||[])!==JSON.stringify(availableAssets);
         Object.assign(previous,{stage:j.stage,error:j.error,availableAssets,serverStatus:j.status});
         if(['running','queued'].includes(j.status)){if(changed)await persist();refresh();continue;}
         if(j.result){
-          if(await fingerprint(p)!==previous.fingerprint){previous.status='stale';await persist();render();continue;}
+          if(await fingerprint(p)!==previous.fingerprint){previous.status='stale';finishRun(p,previous);await persist();render();continue;}
           const assets={};for(const kind of ['master','preview'])if(j.result.assets?.[kind])assets[kind]=await embed(j.id,kind);
-          if(await fingerprint(p)!==previous.fingerprint){previous.status='stale';await persist();render();continue;}
+          if(await fingerprint(p)!==previous.fingerprint){previous.status='stale';finishRun(p,previous);await persist();render();continue;}
           await snapshot(p,false,previous.action==='concepts'?'Перед оновленням концепцій':previous.action==='review'?'Перед повторною перевіркою':previous.action==='edit'?'Перед застосуванням правок ШІ':'Перед додаванням результату генерації');
           if(j.result.concepts){p.conceptSetOutdated=false;p.conceptReuseConfirmation=null;p.concepts=j.result.concepts.map((c,i)=>({...c,id:`${j.id}-c${i+1}`}));p.selected=null;p.prepared=false;p.conceptSource='codex';invalidateApproval(p);p.aiReport=null;if(p.assets.master||p.assets.preview)p.pendingAssetsUpdate=['master','preview'];}
           if(Object.keys(assets).length){previous.appliedAssets=Object.keys(assets);p.assets={...p.assets,...assets};p.example=null;p.prepared=true;invalidateApproval(p);p.reviews={engraving:'unknown',palette:'unknown',parts:'unknown',composition:'unknown'};p.pendingAssetsUpdate=['master','preview'].filter(k=>!assets[k]);p.aiReport=null;onImagesApplied(p,assets);}
           if(j.result.review){p.aiReport=j.result.review;invalidateApproval(p);}
           p.aiData=previous.action==='review'?{...p.aiData,review:j.result.review,reviewJobId:j.id,reviewKnowledge:j.result.knowledge}:{...j.result,jobId:j.id};p.updatedAt=new Date().toISOString();
+          if(Object.keys(assets).length)p.aiData.sourceConceptId=previous.conceptId||null;
           previous.message=j.status==='completed'?'Результат збережено. Перегляньте зображення й перевірку.':'Збережено доступний частковий результат. Решта етапів не завершена.';
         }
-        previous.status=j.status;previous.finishedAt=j.finishedAt||null;previous.cancelRequested=false;routeAfterJob(p,previous.action,j.status);await persist();render();
+        previous.status=j.status;previous.finishedAt=j.finishedAt||null;previous.cancelRequested=false;finishRun(p,previous);routeAfterJob(p,previous.action,j.status);await persist();render();
       }
     }catch(e){connectionError='Зв’язок із сервером перервано. Результат залишиться на диску; оновіть підключення.';refresh();}
     finally{polling=false;}
@@ -106,5 +136,5 @@ export function createAI({prepareStart=async p=>p,getTypeRevision=()=>undefined,
       const p=current();await snapshot(p,false,'Перед додаванням зауважень ШІ');const notes=p.aiReport.findings.map(f=>`${f.location}: ${f.observation} ${f.suggested_action}`);p.notes.push(...notes.filter(n=>!p.notes.includes(n)).slice(0,100-p.notes.length));p.pendingAssetsUpdate=['master','preview'];invalidateApproval(p);await persist();render();toast('Зауваження додано. Натисніть «Застосувати правки», щоб виконати один цикл виправлення.');
     }
   }
-  return {panel,generation,action,start,isLaunching:p=>launching.has(p.id),resultContext:()=>({connectionError,reviewLaunchError:current()?.aiLaunchErrorAction==='review'?current().aiLaunchError||'':''}),async init(){await connect();refresh();await poll();setInterval(poll,1800);}};
+  return {panel,generation,action,start,isLaunching:p=>launching.has(p.id),resultContext:()=>({connectionError,reviewLaunchError:current()?.aiLaunchErrorAction==='review'?current().aiLaunchError||'':''}),async init(){await connect();await restoreConceptRuns();refresh();await poll();setInterval(poll,1800);}};
 }

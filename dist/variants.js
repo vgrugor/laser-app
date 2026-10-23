@@ -7,7 +7,7 @@ export function createVariant(source, projects, { mode = 'parameters', id = cryp
   const p = structuredClone(source);
   Object.assign(p, { id, title: `${rootTitle.slice(0,80)} · варіант ${number}`, createdAt: at, updatedAt: at,
     approved: false, approvedAt: null, appearanceApproval: null, versions: [], versionCounter: 0,
-    aiJob: null, aiLaunchAction: null, aiLaunchError: null, aiLaunchErrorAction: null, resultDraft: null, example: null,
+    conceptRuns: [], aiJob: null, aiLaunchAction: null, aiLaunchError: null, aiLaunchErrorAction: null, resultDraft: null, example: null,
     conceptReuseConfirmation: null,
     variantOf: { projectId: source.id, title: source.title, rootId, rootTitle, number,
       inheritedImages: Boolean(source.assets?.master || source.assets?.preview) } });

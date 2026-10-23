@@ -1,3 +1,4 @@
+import { conceptSource } from './concept-source.mjs';
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir, rename, readdir, realpath } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
@@ -43,7 +44,7 @@ export async function createApp({root=rootDefault,run=createRunner(),runWorkflow
         if(data.action==='type-assistant')validateAssistantRequest(data.assistant);else validateProject(data.project,catalog);
         if([...jobs.values()].some(j=>j.status==='running')){json(res,409,{error:'Зараз виконується інше завдання. Дочекайтеся або скасуйте його.'});return;}
         const id=randomUUID(),directory=resolve(runs,id),controller=new AbortController();
-        const job={id,projectId:data.project?.id||null,action:data.action,status:'running',stage:'Підготовка',createdAt:new Date().toISOString(),events:[],result:null,error:null};
+        const job={id,...conceptSource(data),projectId:data.project?.id||null,action:data.action,status:'running',stage:'Підготовка',createdAt:new Date().toISOString(),events:[],result:null,error:null};
         jobs.set(id,job);controllers.set(id,controller);await store(job);
         await writeFile(resolve(directory,'request.json'),JSON.stringify({...data,catalog},null,2));
         json(res,202,{id});
@@ -58,7 +59,7 @@ export async function createApp({root=rootDefault,run=createRunner(),runWorkflow
       const jobRoute=url.pathname.match(/^\/api\/jobs\/([a-f0-9-]{36})(\/cancel)?$/);
       if(jobRoute){const job=jobs.get(jobRoute[1]);if(!job){json(res,404,{error:'Завдання не знайдено'});return;}
         if(req.method==='POST'&&jobRoute[2]){controllers.get(job.id)?.abort();json(res,200,{status:job.status});return;}
-        if(req.method==='GET'&&!jobRoute[2]){json(res,200,job);return;}
+        if(req.method==='GET'&&!jobRoute[2]){if(!Object.hasOwn(job,'conceptId')){try{Object.assign(job,conceptSource(JSON.parse(await readFile(resolve(runs,job.id,'request.json'),'utf8'))));}catch{job.conceptId=null;}}json(res,200,job);return;}
       }
       if(req.method!=='GET'&&req.method!=='HEAD'){json(res,405,{error:'Метод не підтримується'});return;}
       let path,base;

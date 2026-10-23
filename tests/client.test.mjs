@@ -155,3 +155,28 @@ test('starting concepts opens their step before connecting, and stays there whil
   globalThis.fetch=(path,options)=>path==='/api/status'?request(path,options):path==='/api/jobs/job1'?Promise.resolve({ok:true,json:async()=>({id:'job1',status:'failed',stage:'concepts',error:'Test',result:null})}):request(path,options);
   await ai.action('reconnect');assert.equal(p.route.current,'concepts');assert.equal(p.aiJob.status,'failed');
 });
+
+test('generation history captures request concept ID and keeps only new images for a partial failure',async t=>{
+ const {ai,p}=setup(t,()=>({id:'job1',status:'failed',stage:'preview',error:'Test',result:{assets:{master:'master.png'}}}));
+ p.concepts=[{id:'batch-a-c1',title:'Магнолія',palette:['clear'],frame:'engraved'}];p.selected='batch-a-c1';
+ const oldReader=globalThis.FileReader;t.after(()=>globalThis.FileReader=oldReader);
+ globalThis.FileReader=class{readAsDataURL(){this.result='data:image/png;base64,bmV3';this.onload();}};
+ const request=globalThis.fetch;let sent;globalThis.fetch=(path,options)=>{if(path==='/api/jobs')sent=JSON.parse(options.body);return path.startsWith('/api/assets/')?Promise.resolve({ok:true,blob:async()=>new Blob(['new'])}):request(path,options);};
+ await ai.start('generate');assert.equal(p.aiJob.conceptId,'batch-a-c1');assert.equal(p.conceptRuns[0].conceptId,'batch-a-c1');assert.equal(p.conceptRuns[0].status,'failed');assert.deepEqual(p.conceptRuns[0].assets,{master:'data:image/png;base64,bmV3'});assert.equal(p.assets.preview,'old');assert.equal(sent.project.conceptRuns,undefined);
+ p.selected='batch-b-c1';assert.equal(p.conceptRuns[0].conceptId,'batch-a-c1');
+});
+test('review-only work does not create a generation record and launch failures are independent attempts',async t=>{
+ const {ai,p}=setup(t,()=>({}));p.concepts=[{id:'c1',title:'Квітка',palette:['clear'],frame:'engraved'}];p.selected='c1';
+ const request=globalThis.fetch;globalThis.fetch=(path,options)=>path==='/api/jobs'?Promise.resolve({ok:false,json:async()=>({error:'Busy'})}):request(path,options);
+ await ai.start('review');assert.equal(p.conceptRuns,undefined);
+ await ai.start('generate');await ai.start('generate');assert.equal(p.conceptRuns.length,2);assert.notEqual(p.conceptRuns[0].id,p.conceptRuns[1].id);assert.equal(p.conceptRuns[0].status,'failed');
+});
+
+test('historical generation recovers the original request identity and archived pair without changing the current project',async t=>{
+ const {ai,p}=setup(t,()=>({id:'historical',action:'generate',projectId:'original',projectTitle:'Старий вигляд',conceptId:'old-batch-c1',conceptTitle:'Попередня концепція',createdAt:'2026-10-24T10:00:00Z',status:'completed',result:{assets:{master:'master.png',preview:'preview.png'}}}));
+ p.selected='new-batch-c1';p.aiData={jobId:'historical'};
+ const oldReader=globalThis.FileReader,oldInterval=globalThis.setInterval;t.after(()=>{globalThis.FileReader=oldReader;globalThis.setInterval=oldInterval;});
+ globalThis.setInterval=()=>0;globalThis.FileReader=class{readAsDataURL(){this.result='data:image/png;base64,bmV3';this.onload();}};
+ const request=globalThis.fetch;globalThis.fetch=(path,options)=>path.startsWith('/api/assets/')?Promise.resolve({ok:true,blob:async()=>new Blob(['new'])}):request(path,options);
+ await ai.init();assert.equal(p.conceptRuns[0].conceptId,'old-batch-c1');assert.equal(p.selected,'new-batch-c1');assert.equal(p.assets.master,'old');assert.equal(p.approved,true);assert.deepEqual(Object.keys(p.conceptRuns[0].assets).sort(),['master','preview']);
+});
