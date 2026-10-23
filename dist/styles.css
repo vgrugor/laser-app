@@ -28,15 +28,15 @@
 .route-steps [data-route-status="needs_attention"] .route-step-label small{color:var(--amber)}
 .route-steps [data-route-status="running"] .route-step-label small{color:var(--green)}
 
-.studio-shell{display:block}
-.studio-shell>.sidebar{position:static;width:auto;inset:auto;min-height:76px;padding:14px 32px;flex-direction:row;align-items:center;gap:24px;border-right:0;border-bottom:1px solid var(--line)}
-.studio-shell>.sidebar .brand{padding:0;flex-shrink:0}
-.studio-shell>.sidebar .nav{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 0 auto}
-.studio-shell>.sidebar .nav button{padding:9px 12px}
-.studio-shell>.sidebar .sidebar-bottom{display:none}
-.studio-shell>.main{margin-left:0}
-.studio-shell .topbar{height:50px;background:transparent}
-.studio-shell .page{max-width:1600px}
+.app-shell{display:block}
+.app-shell>.sidebar{position:static;width:auto;inset:auto;min-height:76px;padding:14px 32px;flex-direction:row;align-items:center;gap:24px;border-right:0;border-bottom:1px solid var(--line)}
+.app-shell>.sidebar .brand{padding:0;flex-shrink:0}
+.app-shell>.sidebar .nav{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 0 auto}
+.app-shell>.sidebar .nav button{padding:9px 12px}
+.app-shell>.sidebar .sidebar-bottom{display:none}
+.app-shell>.main{margin-left:0}
+.app-shell .topbar{height:50px;background:transparent}
+.app-shell .page{max-width:1600px}
 .project-heading{align-items:flex-start}
 .project-shell{display:grid;grid-template-columns:180px minmax(0,1fr) 216px;gap:24px;align-items:start}
 .project-route,.project-stage,.project-context{min-width:0}
@@ -142,9 +142,9 @@
 .project-colors .palette-dot{display:block;flex-shrink:0}
 .project-context .hint{border-top:1px solid var(--line);padding-top:14px;margin-top:20px}
 @media(max-width:1000px){.project-route,.project-context{position:static}}
-@media(max-width:1200px){.project-shell{grid-template-columns:166px minmax(0,1fr) 190px;gap:18px}.studio-shell .page{padding-left:24px;padding-right:24px}.route-disclosure,.context-disclosure{padding:12px}}
-@media(max-width:1000px){.project-shell{grid-template-columns:minmax(0,1fr)}.project-route{grid-row:1}.project-context{grid-row:2}.project-stage{grid-row:3}.project-route .route-steps{grid-template-columns:repeat(3,minmax(0,1fr))}.studio-shell>.sidebar{padding:12px 20px;gap:16px}.studio-shell>.sidebar .brand{font-size:17px}.studio-shell>.sidebar .nav button{font-size:12px;padding:8px}.project-context .project-facts{display:grid;grid-template-columns:150px minmax(0,1fr);gap:10px;margin-top:16px}.project-context .project-facts dt,.project-context .project-facts dd{margin:0}.project-review-panels{grid-template-columns:1fr}.project-stage .canvas{min-height:260px}}
-@media(max-width:600px){.studio-shell>.sidebar{padding:10px 14px;min-height:62px;gap:10px}.studio-shell>.sidebar .brand{font-size:16px}.studio-shell>.sidebar .brandmark{display:none}.studio-shell>.sidebar .nav{gap:0}.studio-shell>.sidebar .nav button{padding:8px}.studio-shell>.sidebar .nav button span{display:none}.studio-shell .topbar{padding:0 14px}.studio-shell .top-actions .badge{white-space:normal;font-size:9px}.studio-shell .page{padding:20px 14px}.project-heading{flex-direction:column;gap:14px}.project-heading .actions-wrap{width:100%}.project-route .route-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.project-stage .concepts{grid-template-columns:1fr}.project-stage .viewer-toolbar{height:auto;min-height:54px;padding:10px;align-items:flex-start}.project-stage .segmented{flex-wrap:wrap}.project-stage .viewer-bottom{flex-wrap:wrap;gap:8px}.project-stage .lower-grid{grid-template-columns:1fr}.project-context .project-facts{grid-template-columns:110px minmax(0,1fr)}.project-stage .ai-progress{overflow-wrap:anywhere}.project-stage .canvas{padding:14px;min-height:200px}}
+@media(max-width:1200px){.project-shell{grid-template-columns:166px minmax(0,1fr) 190px;gap:18px}.app-shell .page{padding-left:24px;padding-right:24px}.route-disclosure,.context-disclosure{padding:12px}}
+@media(max-width:1000px){.project-shell{grid-template-columns:minmax(0,1fr)}.project-route{grid-row:1}.project-context{grid-row:2}.project-stage{grid-row:3}.project-route .route-steps{grid-template-columns:repeat(3,minmax(0,1fr))}.app-shell>.sidebar{padding:12px 20px;gap:16px}.app-shell>.sidebar .brand{font-size:17px}.app-shell>.sidebar .nav button{font-size:12px;padding:8px}.project-context .project-facts{display:grid;grid-template-columns:150px minmax(0,1fr);gap:10px;margin-top:16px}.project-context .project-facts dt,.project-context .project-facts dd{margin:0}.project-review-panels{grid-template-columns:1fr}.project-stage .canvas{min-height:260px}}
+@media(max-width:600px){.app-shell>.sidebar{padding:10px 14px;min-height:62px;gap:10px}.app-shell>.sidebar .brand{font-size:16px}.app-shell>.sidebar .brandmark{display:none}.app-shell>.sidebar .nav{gap:0}.app-shell>.sidebar .nav button{padding:8px}.app-shell>.sidebar .nav button span{display:none}.app-shell .topbar{padding:0 14px}.app-shell .top-actions .badge{white-space:normal;font-size:9px}.app-shell .page{padding:20px 14px}.project-heading{flex-direction:column;gap:14px}.project-heading .actions-wrap{width:100%}.project-route .route-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.project-stage .concepts{grid-template-columns:1fr}.project-stage .viewer-toolbar{height:auto;min-height:54px;padding:10px;align-items:flex-start}.project-stage .segmented{flex-wrap:wrap}.project-stage .viewer-bottom{flex-wrap:wrap;gap:8px}.project-stage .lower-grid{grid-template-columns:1fr}.project-context .project-facts{grid-template-columns:110px minmax(0,1fr)}.project-stage .ai-progress{overflow-wrap:anywhere}.project-stage .canvas{padding:14px;min-height:200px}}
 
 /* Stage 8: explicit project variants and retained source results. */
 .variant-notice{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;margin-bottom:18px;border:1px solid #cbd9cc;border-radius:12px;background:#eef4ed;color:#334d3c;overflow-wrap:anywhere}
