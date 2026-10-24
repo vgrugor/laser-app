@@ -1,4 +1,5 @@
 import { ensureRoute, ROUTE_VERSION } from './project-route.js';
+import { validatePanels } from './panels.js';
 
 export const STATE_VERSION = 2;
 export const ROUTE_BACKUP_KEY = 'state-before-route-v2';
@@ -6,6 +7,7 @@ export const ROUTE_BACKUP_KEY = 'state-before-route-v2';
 // Upgrade only metadata and missing defaults. Images, approval, IDs and dates stay intact.
 function upgradeProject(p) {
   if (!p || typeof p !== 'object' || Array.isArray(p)) throw Error('Некоректні дані проєкту.');
+  validatePanels(p);
   if (p.route?.version > ROUTE_VERSION) throw Error('Цей проєкт збережений новішою версією застосунку.');
   let changed = p.route?.version !== ROUTE_VERSION;
   const defaults = { layers: 2, pendingAssetsUpdate: [], assets: { master: null, preview: null },

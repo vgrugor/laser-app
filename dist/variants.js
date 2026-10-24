@@ -1,3 +1,4 @@
+import { panelSources } from './panels.js';
 import { ensureRoute } from './project-route.js';
 
 export function createVariant(source, projects, { mode = 'parameters', id = crypto.randomUUID(), at = new Date().toISOString() } = {}) {
@@ -15,6 +16,7 @@ export function createVariant(source, projects, { mode = 'parameters', id = cryp
     Object.assign(p, { assets: { master: null, preview: null }, pendingAssetsUpdate: [], selected: null,
       prepared: false, aiData: null, aiReport: null, tracing: null, notes: [], locks: [],
       reviews: { engraving: 'unknown', palette: 'unknown', parts: 'unknown', composition: 'unknown' } });
+    for(const part of p.panels||[])Object.assign(part,{assets:{master:null},aiData:null,aiReport:null,tracing:null,notes:[],locks:[],resultDraft:null,pendingAssetsUpdate:[]});
     p.variantOf.inheritedImages = false;
     p.route = { version: 2, current: p.concepts?.length ? 'concepts' : 'brief' };
   }
@@ -28,7 +30,7 @@ export const needsSourceCheckpoint = p => hasSourceResult(p) ? !p.pendingAssetsU
 
 export async function generationBasis(p) {
   const value = JSON.stringify([p.type,p.clockMount,p.width,p.height,p.layers,p.frame,p.brief,p.palette,p.reference,
-    p.selected,p.concepts?.find(c=>c.id===p.selected),p.notes,p.locks,p.assets]);
+    p.selected,p.concepts?.find(c=>c.id===p.selected),p.notes,p.locks,p.assets,panelSources(p)]);
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');
 }
 

@@ -1,3 +1,4 @@
+import { multiPanel, panelList } from './panels.js';
 import { projectRoute, ROUTE_STATUS_LABELS } from './project-route.js';
 
 export const ROUTE_HINTS = Object.freeze({
@@ -19,7 +20,7 @@ export function routeNavigation(p, esc) {
 
 export function projectSummary(p, { esc, colors }) {
   const concept = p.concepts?.find(c => c.id === p.selected);
-  return `<dl class="project-facts"><dt>Тип виробу</dt><dd>${esc(p.type || 'Ще не обраний')}${p.type === 'Годинник' ? `<small>${p.clockMount === 'wall' ? 'Настінний' : p.clockMount === 'stand' ? 'На підставці' : 'Кріплення ще не обране'}</small>` : ''}</dd><dt>Розмір декору</dt><dd>${esc(p.width)} × ${esc(p.height)} мм</dd><dt>Матеріал</dt><dd>Фанера 3 мм<small>${p.layers === 1 ? 'Один шар' : 'Підкладка та інкрустація'}</small></dd><dt>Доступні морилки</dt><dd class="project-colors">${(p.palette || []).map(id => {
+  return `<dl class="project-facts"><dt>Тип виробу</dt><dd>${esc(p.type || 'Ще не обраний')}${p.type === 'Годинник' ? `<small>${p.clockMount === 'wall' ? 'Настінний' : p.clockMount === 'stand' ? 'На підставці' : 'Кріплення ще не обране'}</small>` : ''}</dd>${multiPanel(p)?`<dt>Панелі комплекту · ${panelList(p).length}</dt><dd>${panelList(p).map(x=>`<small>${esc(x.name)} · ${x.width} × ${x.height} мм</small>`).join('')}</dd>`:`<dt>Розмір декору</dt><dd>${esc(p.width)} × ${esc(p.height)} мм</dd>`}<dt>Матеріал</dt><dd>Фанера 3 мм<small>${p.layers === 1 ? 'Один шар' : 'Підкладка та інкрустація'}</small></dd><dt>Доступні морилки</dt><dd class="project-colors">${(p.palette || []).map(id => {
     const color = colors.find(c => c.id === id);
     return color ? `<span><i class="palette-dot" style="background:${color.hex}" aria-hidden="true"></i>${esc(color.name)}</span>` : '';
   }).join('') || 'Ще не обрані'}</dd><dt>Обрана концепція</dt><dd>${esc(concept?.title || 'Ще не обрана')}</dd></dl>`;

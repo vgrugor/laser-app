@@ -1,3 +1,4 @@
+import { multiPanel, panelsReady, validPanelConfiguration } from './panels.js';
 import { paletteIsConfirmed } from './palette-confirmation.js';
 
 export const ROUTE_STEPS = Object.freeze([
@@ -16,7 +17,7 @@ export const ROUTE_STATUS_LABELS = Object.freeze({
 });
 
 export function briefIsReady(p) {
-  return Boolean(p.type?.trim() && p.brief?.trim()
+  return Boolean(validPanelConfiguration(p) && p.type?.trim() && p.brief?.trim()
     && Number.isFinite(p.width) && Number.isFinite(p.height)
     && p.width >= 20 && p.height >= 20
     && ((p.width <= 300 && p.height <= 400) || (p.width <= 400 && p.height <= 300)));
@@ -27,7 +28,7 @@ export function projectRoute(p) {
   const hasConcepts = Boolean(p.concepts?.length);
   const selected = Boolean(p.selected && p.concepts?.some(c => c.id === p.selected));
   const hasImage = Boolean(p.assets?.master || p.assets?.preview);
-  const pair = Boolean(p.assets?.master && p.assets?.preview);
+  const pair = Boolean(p.assets?.master && p.assets?.preview && (!multiPanel(p)||panelsReady(p)));
   const job = p.aiJob;
   const imageJob = ['generate', 'edit'].includes(job?.action);
   const running = ['queued', 'running'].includes(job?.status);

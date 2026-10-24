@@ -1,3 +1,4 @@
+import { multiPanel, panelList } from '../dist/panels.js';
 import { conceptSource } from './concept-source.mjs';
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir, rename, readdir, realpath } from 'node:fs/promises';
@@ -11,7 +12,7 @@ import { validateAssistantRequest, runTypeAssistant } from './type-assistant.mjs
 const rootDefault=resolve(fileURLToPath(new URL('..',import.meta.url)));
 const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.md':'text/plain; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.jpeg':'image/jpeg','.webp':'image/webp'};
 const json=(res,code,data)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
-async function body(req){let size=0,chunks=[];for await(const b of req){size+=b.length;if(size>36*1024*1024)throw Error('Завеликий запит');chunks.push(b);}return JSON.parse(Buffer.concat(chunks).toString());}
+async function body(req){let size=0,chunks=[];for await(const b of req){size+=b.length;if(size>192*1024*1024)throw Error('Завеликий запит');chunks.push(b);}return JSON.parse(Buffer.concat(chunks).toString());}
 export async function createApp({root=rootDefault,run=createRunner(),runWorkflow=workflow}={}){
   const catalogStore=createCatalogStore(root);
   const runs=resolve(root,'artifacts/runs'),jobs=new Map(),controllers=new Map(),token=randomBytes(32).toString('hex');
@@ -42,17 +43,17 @@ export async function createApp({root=rootDefault,run=createRunner(),runWorkflow
         if(!['concepts','generate','edit','review','tracing','type-assistant'].includes(data.action))throw Error('Невідома дія');
         const catalog=await catalogStore.read();
         if(data.action==='type-assistant')validateAssistantRequest(data.assistant);else validateProject(data.project,catalog);
-        if(data.action==='tracing'&&(!data.project.assets?.master||data.project.pendingAssetsUpdate?.length))throw Error('Для контурного рисунка потрібен актуальний кольоровий декор');
+        if(data.action==='tracing'&&(multiPanel(data.project)?panelList(data.project).filter(x=>!data.project.scopePanelId||x.id===data.project.scopePanelId).some(x=>!x.assets?.master||x.pendingAssetsUpdate?.length):!data.project.assets?.master||data.project.pendingAssetsUpdate?.length))throw Error('Для контурного рисунка потрібен актуальний кольоровий декор');
         if([...jobs.values()].some(j=>j.status==='running')){json(res,409,{error:'Зараз виконується інше завдання. Дочекайтеся або скасуйте його.'});return;}
         const id=randomUUID(),directory=resolve(runs,id),controller=new AbortController();
         const job={id,...conceptSource(data),projectId:data.project?.id||null,action:data.action,status:'running',stage:'Підготовка',createdAt:new Date().toISOString(),events:[],result:null,error:null};
         jobs.set(id,job);controllers.set(id,controller);await store(job);
         await writeFile(resolve(directory,'request.json'),JSON.stringify({...data,catalog},null,2));
         json(res,202,{id});
-        const timeout=setTimeout(()=>controller.abort(Error('Перевищено час виконання (20 хвилин)')),20*60*1000);
+        const timeout=setTimeout(()=>controller.abort(Error('Перевищено час виконання (20 хвилин)')),20*60*1000*(multiPanel(data.project||{})?panelList(data.project).length+1:1));
         const save={event:e=>{job.events.push({...e,at:new Date().toISOString()});job.events=job.events.slice(-150);},file:async(name,value)=>writeFile(resolve(directory,name),JSON.stringify(value,null,2)),partial:async result=>{job.result=structuredClone(result);await store(job);}};
         (async()=>{
-          try{const execute=data.action==='type-assistant'?runTypeAssistant:runWorkflow;job.result=await execute({root,directory,action:data.action,project:data.project,assistant:data.assistant,catalog,run,signal:controller.signal,stage:async name=>{if(controller.signal.aborted)throw Error('Завдання скасовано');job.stage=name;await store(job);},save});job.status=controller.signal.aborted?'cancelled':'completed';}
+          try{const execute=data.action==='type-assistant'?runTypeAssistant:runWorkflow;job.result=await execute({root,directory,action:data.action,project:data.project,assistant:data.assistant,catalog,run,signal:controller.signal,stage:async name=>{if(controller.signal.aborted)throw Error('Завдання скасовано');if(typeof name==='string')job.stage=name;else Object.assign(job,name);await store(job);},save});job.status=controller.signal.aborted?'cancelled':'completed';}
           catch(e){job.status=controller.signal.aborted?'cancelled':'failed';const detail=String(e.message).slice(0,5000);await save.file('error.json',{message:detail});job.error=controller.signal.aborted?'Завдання скасовано або перевищено час виконання.':detail.includes('Operation not permitted')?'Codex не зміг запуститися в обмеженому середовищі. Зупиніть цей сервер і запустіть sh scripts/start.command зі звичайного Terminal.':detail.slice(0,2000);}
           finally{clearTimeout(timeout);controllers.delete(id);job.finishedAt=new Date().toISOString();await store(job);}
         })().catch(e=>console.error('Cannot persist job:',e.message));return;
@@ -64,7 +65,7 @@ export async function createApp({root=rootDefault,run=createRunner(),runWorkflow
       }
       if(req.method!=='GET'&&req.method!=='HEAD'){json(res,405,{error:'Метод не підтримується'});return;}
       let path,base;
-      const asset=url.pathname.match(/^\/api\/assets\/([a-f0-9-]{36})\/(master|preview|outline|contour|engraving)\.png$/);
+      const asset=url.pathname.match(/^\/api\/assets\/([a-f0-9-]{36})\/((?:panel-(?:[1-9]|1[0-2])-)?(?:master|preview|outline|contour|engraving))\.png$/);
       if(asset){base=runs;path=resolve(runs,asset[1],asset[2]+'.png');}
       else {if(url.pathname.startsWith('/api/')){json(res,404,{error:'Не знайдено'});return;}base=resolve(root,'dist');path=resolve(base,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));}
       const actual=await realpath(path),actualBase=await realpath(base);

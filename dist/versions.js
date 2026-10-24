@@ -1,3 +1,4 @@
+import { multiPanel, panelList } from './panels.js';
 import { approvedWithAiRemarks } from './approval.js';
 
 // Images stay in their master/preview roles. Group across the entire history,
@@ -7,7 +8,7 @@ export function versionEntries(versions, mode = 'images', imageKey = src => src 
   if (mode === 'all') return newestFirst.map(version => ({ version, count: 1 }));
   const entries = [], pairs = new Map();
   for (const version of newestFirst) {
-    const master = imageKey(version.data?.assets?.master) || null;
+    const master = multiPanel(version.data||{})?(panelList(version.data).some(x=>imageKey(x.assets?.master))?JSON.stringify(panelList(version.data).map(x=>[x.id,imageKey(x.assets?.master)||null])):null):imageKey(version.data?.assets?.master)||null;
     const preview = imageKey(version.data?.assets?.preview) || null;
     if (!master && !preview) continue;
     let previews = pairs.get(master);
