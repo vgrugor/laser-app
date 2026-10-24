@@ -1,3 +1,4 @@
+import { TRACING_KINDS, tracingFingerprint, markTracingOutdated } from './tracing.js';
 import { imageAction, recordConceptRun } from './concept-history.js';
 import { generationScreen } from './generation.js';
 import { conceptIssue } from './concepts.js';
@@ -49,6 +50,7 @@ export function createAI({prepareStart=async p=>p,getTypeRevision=()=>undefined,
       if(current()!==p||busy(p))return;
       if(action==='concepts'&&!await confirmPalette(p))return;
       if(current()!==p||busy(p)||!validate(p))return;
+      if(action==='tracing'&&(!p.assets?.master||p.pendingAssetsUpdate?.length)){toast('Спочатку отримайте актуальний кольоровий декор');return;}
       if(imageAction(action)){sourceConcept=p.concepts?.find(c=>c.id===p.selected)||null;attemptAt=new Date().toISOString();}
       p.aiLaunchErrorAction=action;p.aiLaunchError=null;
       if(['generate','edit'].includes(action))p.aiLaunchAction=action;
@@ -57,16 +59,16 @@ export function createAI({prepareStart=async p=>p,getTypeRevision=()=>undefined,
       await persist();render();
       await connect();if(!connection){launchErrors.set(p.id,connectionError);p.aiLaunchError=connectionError;failedLaunch(p,sourceConcept,action,attemptAt,connectionError);await persist();render();toast('Для генерації потрібен локальний сервер');return;}
       if(action==='edit'&&!p.notes.length){toast('Спочатку додайте опис правки');return;}
-      const {versions,aiJob,aiReport,aiData,resultDraft,aiLaunchAction,aiLaunchError,aiLaunchErrorAction,conceptRuns,...project}=structuredClone(p);
+      const {versions,aiJob,aiReport,aiData,resultDraft,aiLaunchAction,aiLaunchError,aiLaunchErrorAction,conceptRuns,tracing,...project}=structuredClone(p);
       project.typeRevision=getTypeRevision(p);
       if(action==='generate'&&p.selected){const concept=p.concepts.find(c=>c.id===p.selected),issue=conceptIssue(p,concept);if(issue){toast(issue);return;}project.palette=[...(concept.palette||p.palette)];project.frame=concept.frame;}
-      if(action==='review'&&aiData?.plan)project.designPlan=aiData.plan;
+      if(['review','tracing'].includes(action)&&aiData?.plan)project.designPlan=aiData.plan;
       if(imageAction(action))sourceConcept=project.concepts?.find(c=>c.id===project.selected)||null;
-      const revision=await fingerprint(p);
+      const revision=action==='tracing'?await tracingFingerprint(p):await fingerprint(p);
       const response=await request('/api/jobs',{action,project});
       submitted=response.id;p.aiJob={id:response.id,action,conceptId:sourceConcept?.id||null,conceptTitle:sourceConcept?.title||'',startedAt:attemptAt,fingerprint:revision,status:'running',stage:'Підготовка'};
       recordConceptRun(p,{id:response.id,jobId:response.id,conceptId:sourceConcept?.id,conceptTitle:sourceConcept?.title||'',projectId:p.id,projectTitle:project.title,action,status:'running',startedAt:attemptAt,assets:{}});
-      moveToRoute(p,action==='concepts'?'concepts':['generate','edit'].includes(action)?'generation':'result');
+      if(action!=='tracing')moveToRoute(p,action==='concepts'?'concepts':['generate','edit'].includes(action)?'generation':'result');
       await persist();render();await poll();return response.id;
     }catch(e){if(!submitted)failedLaunch(p,sourceConcept,action,attemptAt,e.message);launchErrors.set(p.id,e.message);p.aiLaunchError=e.message;await persist();toast(e.message);render();}
     finally{launching.delete(ownerId);launching.delete(p.id);refresh();}
@@ -106,17 +108,31 @@ export function createAI({prepareStart=async p=>p,getTypeRevision=()=>undefined,
         if(p.aiJob!==previous)continue;
         if(!previous.conceptId&&j.conceptId){previous.conceptId=j.conceptId;previous.conceptTitle=j.conceptTitle||'';previous.startedAt=j.createdAt;}
         connectionError='';
-        const availableAssets=Object.keys(j.result?.assets||{}).filter(kind=>['master','preview'].includes(kind));
+        const availableAssets=Object.keys(j.result?.assets||{}).filter(kind=>(previous.action==='tracing'?TRACING_KINDS:['master','preview']).includes(kind));
         const changed=previous.stage!==j.stage||JSON.stringify(previous.availableAssets||[])!==JSON.stringify(availableAssets);
         Object.assign(previous,{stage:j.stage,error:j.error,availableAssets,serverStatus:j.status});
         if(['running','queued'].includes(j.status)){if(changed)await persist();refresh();continue;}
+        if(previous.action==='tracing'){
+          // Never mix derived files into the colour pair or replace its approval/report.
+          if(j.result&&availableAssets.length){
+            if(await tracingFingerprint(p)!==previous.fingerprint){previous.status='stale';previous.message='Декор змінився під час створення контурів. Повторіть запуск.';await persist();render();continue;}
+            const assets={};for(const kind of availableAssets)assets[kind]=await embed(j.id,kind);
+            if(p.aiJob!==previous)continue;
+            if(await tracingFingerprint(p)!==previous.fingerprint){previous.status='stale';previous.message='Декор змінився під час створення контурів. Повторіть запуск.';await persist();render();continue;}
+            await snapshot(p,false,'Перед оновленням контурного рисунка');
+            p.tracing={assets,sourceFingerprint:previous.fingerprint,outdated:Boolean(p.pendingAssetsUpdate?.length),jobId:j.id,createdAt:j.finishedAt||new Date().toISOString(),review:j.result.tracingReview||null,assetMetadata:j.result.assetMetadata||{},sourceMasterHash:j.result.sourceMasterHash||null,knowledge:j.result.knowledge||null};
+            previous.appliedAssets=Object.keys(assets);
+          }
+          previous.status=j.status;previous.finishedAt=j.finishedAt||null;previous.cancelRequested=false;
+          await persist();render();continue;
+        }
         if(j.result){
           if(await fingerprint(p)!==previous.fingerprint){previous.status='stale';finishRun(p,previous);await persist();render();continue;}
           const assets={};for(const kind of ['master','preview'])if(j.result.assets?.[kind])assets[kind]=await embed(j.id,kind);
           if(await fingerprint(p)!==previous.fingerprint){previous.status='stale';finishRun(p,previous);await persist();render();continue;}
           await snapshot(p,false,previous.action==='concepts'?'Перед оновленням концепцій':previous.action==='review'?'Перед повторною перевіркою':previous.action==='edit'?'Перед застосуванням правок ШІ':'Перед додаванням результату генерації');
           if(j.result.concepts){p.conceptSetOutdated=false;p.conceptReuseConfirmation=null;p.concepts=j.result.concepts.map((c,i)=>({...c,id:`${j.id}-c${i+1}`}));p.selected=null;p.prepared=false;p.conceptSource='codex';invalidateApproval(p);p.aiReport=null;if(p.assets.master||p.assets.preview)p.pendingAssetsUpdate=['master','preview'];}
-          if(Object.keys(assets).length){previous.appliedAssets=Object.keys(assets);p.assets={...p.assets,...assets};p.example=null;p.prepared=true;invalidateApproval(p);p.reviews={engraving:'unknown',palette:'unknown',parts:'unknown',composition:'unknown'};p.pendingAssetsUpdate=['master','preview'].filter(k=>!assets[k]);p.aiReport=null;onImagesApplied(p,assets);}
+          if(Object.keys(assets).length){previous.appliedAssets=Object.keys(assets);p.assets={...p.assets,...assets};markTracingOutdated(p);p.example=null;p.prepared=true;invalidateApproval(p);p.reviews={engraving:'unknown',palette:'unknown',parts:'unknown',composition:'unknown'};p.pendingAssetsUpdate=['master','preview'].filter(k=>!assets[k]);p.aiReport=null;onImagesApplied(p,assets);}
           if(j.result.review){p.aiReport=j.result.review;invalidateApproval(p);}
           p.aiData=previous.action==='review'?{...p.aiData,review:j.result.review,reviewJobId:j.id,reviewKnowledge:j.result.knowledge}:{...j.result,jobId:j.id};p.updatedAt=new Date().toISOString();
           if(Object.keys(assets).length)p.aiData.sourceConceptId=previous.conceptId||null;
@@ -128,7 +144,7 @@ export function createAI({prepareStart=async p=>p,getTypeRevision=()=>undefined,
     finally{polling=false;}
   }
   async function action(name){
-    if(['concepts','generate','edit','review'].includes(name))return start(name);
+    if(['concepts','generate','edit','review','tracing'].includes(name))return start(name);
     if(name==='retry-generation')return start((current()?.aiLaunchAction||current()?.aiJob?.action)==='edit'?'edit':'generate');
     if(name==='reconnect'){await connect();refresh();await poll();}
     if(name==='cancel'){const p=current(),job=p?.aiJob;if(!busy(p)||job.cancelRequested)return;try{await request(`/api/jobs/${job.id}/cancel`,{});job.cancelRequested=true;await persist();refresh();toast('Запит на скасування надіслано');}catch(e){toast(e.message);}}
@@ -136,5 +152,5 @@ export function createAI({prepareStart=async p=>p,getTypeRevision=()=>undefined,
       const p=current();await snapshot(p,false,'Перед додаванням зауважень ШІ');const notes=p.aiReport.findings.map(f=>`${f.location}: ${f.observation} ${f.suggested_action}`);p.notes.push(...notes.filter(n=>!p.notes.includes(n)).slice(0,100-p.notes.length));p.pendingAssetsUpdate=['master','preview'];invalidateApproval(p);await persist();render();toast('Зауваження додано. Натисніть «Застосувати правки», щоб виконати один цикл виправлення.');
     }
   }
-  return {panel,generation,action,start,isLaunching:p=>launching.has(p.id),resultContext:()=>({connectionError,reviewLaunchError:current()?.aiLaunchErrorAction==='review'?current().aiLaunchError||'':''}),async init(){await connect();await restoreConceptRuns();refresh();await poll();setInterval(poll,1800);}};
+  return {panel,generation,action,start,tracingContext:(p=current())=>({starting:Boolean(p&&launching.has(p.id)&&p.aiLaunchErrorAction==='tracing'),connectionError}),isLaunching:p=>launching.has(p.id),resultContext:()=>({connectionError,reviewLaunchError:current()?.aiLaunchErrorAction==='review'?current().aiLaunchError||'':''}),async init(){await connect();await restoreConceptRuns();refresh();await poll();setInterval(poll,1800);}};
 }

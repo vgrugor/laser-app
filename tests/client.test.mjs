@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createAI } from '../dist/ai.js';
+import { tracingFingerprint, tracingPanel } from '../dist/tracing.js';
+import { approvalSignature } from '../dist/approval.js';
 
 function setup(t,respond){
   const originalFetch=globalThis.fetch,originalDocument=globalThis.document;
@@ -13,6 +15,48 @@ function setup(t,respond){
   return {ai,p,snapshots,messages,get renders(){return renders;}};
 }
 const concepts=Array.from({length:10},(_,i)=>({title:`Ідея ${i}`,description:'Лис',frame:'engraved',palette:['clear']}));
+
+function mockTracingImages(t){
+  const oldReader=globalThis.FileReader;t.after(()=>globalThis.FileReader=oldReader);
+  globalThis.FileReader=class {readAsDataURL(blob){this.result='data:image/png;base64,'+Buffer.from(blob.kind).toString('base64');this.onload();}};
+  const request=globalThis.fetch;globalThis.fetch=(path,options)=>path.startsWith('/api/assets/')?Promise.resolve({ok:true,blob:async()=>({kind:path.split('/').at(-1)})}):request(path,options);
+}
+test('derived tracing keeps the accepted product, captured approval, AI plan/report and route unchanged',async t=>{
+  const {ai,p,snapshots}=setup(t,()=>({id:'job1',status:'completed',stage:'tracing-review',result:{assets:{outline:'outline.png'},tracingReview:{disposition:'pass_visual',findings:[],manual_checks:[]},assetMetadata:{outline:{sha256:'abc'}}}}));
+  mockTracingImages(t);p.route={version:2,current:'saved'};p.aiData={plan:{summary:'План'},jobId:'colour-job'};p.aiReport={disposition:'changes_required'};p.appearanceApproval={at:'2026-10-24',aiRemarksAccepted:true};p.aiLaunchAction='edit';
+  const before=structuredClone(p),signature=await approvalSignature(p,1);let sent;
+  const request=globalThis.fetch;globalThis.fetch=(path,options)=>{if(path==='/api/jobs')sent=JSON.parse(options.body);return request(path,options);};
+  await ai.action('tracing');
+  for(const key of ['assets','approved','appearanceApproval','aiData','aiReport','route'])assert.deepEqual(p[key],before[key],key);
+  assert.equal(await approvalSignature(p,1),signature);assert.equal(p.aiLaunchAction,'edit');assert.equal(p.conceptRuns?.length||0,0);
+  assert.deepEqual(sent.project.designPlan,p.aiData.plan);assert.equal(sent.project.tracing,undefined);
+  assert.equal(p.tracing.outdated,false);assert.equal(p.tracing.sourceFingerprint,await tracingFingerprint(p));assert.deepEqual(Object.keys(p.tracing.assets),['outline']);assert.equal(snapshots.length,1);
+});
+test('a combined outline with failed review replaces legacy files, preserving the old set in history',async t=>{
+  const {ai,p,snapshots}=setup(t,()=>({id:'job1',status:'failed',stage:'tracing-review',error:'Unavailable',result:{assets:{outline:'outline.png'}}}));
+  mockTracingImages(t);p.tracing={assets:{contour:'old-contour',engraving:'old-engraving'},sourceFingerprint:'old-source'};
+  await ai.start('tracing');assert.equal(p.aiJob.status,'failed');assert.equal(p.approved,true);assert.equal(p.assets.master,'old');
+  assert.equal(p.tracing.assets.engraving,undefined);assert.ok(p.tracing.assets.outline);assert.equal(snapshots[0].tracing.assets.engraving,'old-engraving');assert.equal(p.tracing.review,null);
+});
+test('source changes while tracing runs or downloads reject the response without overwriting old guides',async t=>{
+  for(const changeAt of ['poll','download']){
+    const {ai,p,snapshots}=setup(t,p=>{if(changeAt==='poll')p.assets.master='changed';return {id:'job1',status:'completed',stage:'outline',result:{assets:{outline:'outline.png'}}};});
+    mockTracingImages(t);p.tracing={assets:{contour:'old-guide'}};
+    const request=globalThis.fetch;globalThis.fetch=(path,options)=>{if(changeAt==='download'&&path.startsWith('/api/assets/'))p.assets.master='changed';return request(path,options);};
+    await ai.start('tracing');assert.equal(p.aiJob.status,'stale');assert.equal(p.tracing.assets.contour,'old-guide');assert.equal(snapshots.length,0);
+  }
+});
+test('tracing launch errors remain inline on saved products and do not reuse the colour generation retry mode',async t=>{
+  const {ai,p}=setup(t,()=>({}));p.aiLaunchAction='edit';p.route={version:2,current:'saved'};
+  const request=globalThis.fetch;globalThis.fetch=(path,options)=>path==='/api/jobs'?Promise.resolve({ok:false,json:async()=>({error:'Сервер зайнятий'})}):request(path,options);
+  await ai.start('tracing');assert.equal(p.approved,true);assert.equal(p.aiLaunchAction,'edit');assert.equal(p.route.current,'saved');
+  assert.match(tracingPanel(p,{esc:String,safeImage:String,...ai.tracingContext(p)}),/Сервер зайнятий/);assert.equal(ai.isLaunching(p),false);
+});
+test('tracing preflight rejects a missing or outdated master without submitting a job',async t=>{
+  const {ai,p}=setup(t,()=>({}));let starts=0;const request=globalThis.fetch;
+  globalThis.fetch=(path,options)=>{if(path==='/api/jobs')starts++;return request(path,options);};
+  p.pendingAssetsUpdate=['preview'];await ai.start('tracing');p.pendingAssetsUpdate=[];p.assets.master=null;await ai.start('tracing');assert.equal(starts,0);
+});
 test('client applies concepts, snapshots previous revision and resets approval',async t=>{
   const {ai,p,snapshots}=setup(t,()=>({id:'job1',status:'completed',stage:'concepts',result:{concepts}}));
   await ai.start('concepts');assert.equal(p.concepts.length,10);assert.equal(p.approved,false);assert.equal(p.aiJob.status,'completed');assert.equal(snapshots.length,1);assert.deepEqual(p.pendingAssetsUpdate,['master','preview']);

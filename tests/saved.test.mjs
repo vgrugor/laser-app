@@ -6,11 +6,14 @@ const colors=[{id:'clear',name:'Чистий',hex:'#BAA687'},{id:'pine',name:'С
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const project=()=>({id:'saved',title:'Магнолія',type:'Панно',brief:'Квітка',width:200,height:200,layers:2,frame:'cut',palette:['clear','pine','black'],assets:{master:'master.png',preview:'preview.png'},approved:true,approvedAt:'2026-10-21T08:30:00Z',appearanceApproval:{at:'2026-10-21T08:30:00Z',aiRemarksAccepted:true,comment:'Перевірю в CAD',aiReview:{disposition:'changes_required',findings:[{location:'Рамка',observation:'Вузька',suggested_action:'Розширити'}],manual_checks:['Ширина рамки']}},aiData:{plan:{parts:[{name:'Пелюстки',finish_id:'clear',quantity:7,layer:'top'},{name:'Серединка',finish_id:'pine',quantity:1,layer:'top'}],engraving:['Чорні прожилки'],manual_checks:['Ширина рамки','Кріплення']}},concepts:[{id:'c1',palette:['clear','black']}],selected:'c1',notes:[],versions:[],route:{version:2,current:'saved'}});
 const options={esc,icon:()=>'',safeImage:String,view:'preview',colors,versions:'<p>Історія</p>'};
-test('saved product shows paired images, direct downloads, backup and separate variants without editing controls',()=>{
+test('saved product shows paired images, direct downloads, backup and separate variants with derived tracing but without appearance editing controls',()=>{
  const p=project(),before=structuredClone(p),html=savedScreen(p,options);
- for(const text of ['data-download="master"','data-download="preview"','data-action="export"','data-action="passport"','data-action="variant-concepts"','Вигляд погоджено','Ширина рамки'])assert.ok(html.includes(text),text);
- assert.doesNotMatch(html,/data-action="approve"|data-action="ai-|data-upload|data-field|id="change-note"/);assert.deepEqual(p,before);
+ for(const text of ['data-download="master"','data-download="preview"','data-action="export"','data-action="passport"','data-view="tracing"','data-action="variant-concepts"','Вигляд погоджено','Ширина рамки'])assert.ok(html.includes(text),text);
+ assert.doesNotMatch(html,/data-action="approve"|data-action="ai-(?!tracing")|data-upload|data-field|id="change-note"/);assert.deepEqual(p,before);
  assert.match(savedScreen(p,{...options,view:'master'}),/src="master.png"/);
+ assert.doesNotMatch(html,/id="tracing-panel"/);
+ assert.match(savedScreen(p,{...options,view:'tracing'}),/id="tracing-panel"/);
+ assert.match(savedScreen(p,{...options,view:'tracing'}),/data-action="ai-tracing"/);
 });
 test('displayed finishes follow the proposed parts, then concept, and finally explicitly labelled available colors',()=>{
  const p=project();assert.deepEqual(savedFinishes(p),{ids:['clear','pine'],label:'Морилки за планом деталей'});

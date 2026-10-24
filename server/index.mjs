@@ -39,9 +39,10 @@ export async function createApp({root=rootDefault,run=createRunner(),runWorkflow
       if(req.method==='POST'&&url.pathname==='/api/jobs'){
         if([...jobs.values()].some(j=>j.status==='running')){json(res,409,{error:'Зараз виконується інше завдання. Дочекайтеся або скасуйте його.'});return;}
         const data=await body(req);
-        if(!['concepts','generate','edit','review','type-assistant'].includes(data.action))throw Error('Невідома дія');
+        if(!['concepts','generate','edit','review','tracing','type-assistant'].includes(data.action))throw Error('Невідома дія');
         const catalog=await catalogStore.read();
         if(data.action==='type-assistant')validateAssistantRequest(data.assistant);else validateProject(data.project,catalog);
+        if(data.action==='tracing'&&(!data.project.assets?.master||data.project.pendingAssetsUpdate?.length))throw Error('Для контурного рисунка потрібен актуальний кольоровий декор');
         if([...jobs.values()].some(j=>j.status==='running')){json(res,409,{error:'Зараз виконується інше завдання. Дочекайтеся або скасуйте його.'});return;}
         const id=randomUUID(),directory=resolve(runs,id),controller=new AbortController();
         const job={id,...conceptSource(data),projectId:data.project?.id||null,action:data.action,status:'running',stage:'Підготовка',createdAt:new Date().toISOString(),events:[],result:null,error:null};
@@ -63,7 +64,7 @@ export async function createApp({root=rootDefault,run=createRunner(),runWorkflow
       }
       if(req.method!=='GET'&&req.method!=='HEAD'){json(res,405,{error:'Метод не підтримується'});return;}
       let path,base;
-      const asset=url.pathname.match(/^\/api\/assets\/([a-f0-9-]{36})\/(master|preview)\.png$/);
+      const asset=url.pathname.match(/^\/api\/assets\/([a-f0-9-]{36})\/(master|preview|outline|contour|engraving)\.png$/);
       if(asset){base=runs;path=resolve(runs,asset[1],asset[2]+'.png');}
       else {if(url.pathname.startsWith('/api/')){json(res,404,{error:'Не знайдено'});return;}base=resolve(root,'dist');path=resolve(base,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));}
       const actual=await realpath(path),actualBase=await realpath(base);

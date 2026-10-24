@@ -13,7 +13,7 @@ export function createVariant(source, projects, { mode = 'parameters', id = cryp
       inheritedImages: Boolean(source.assets?.master || source.assets?.preview) } });
   if (mode === 'concepts') {
     Object.assign(p, { assets: { master: null, preview: null }, pendingAssetsUpdate: [], selected: null,
-      prepared: false, aiData: null, aiReport: null, notes: [], locks: [],
+      prepared: false, aiData: null, aiReport: null, tracing: null, notes: [], locks: [],
       reviews: { engraving: 'unknown', palette: 'unknown', parts: 'unknown', composition: 'unknown' } });
     p.variantOf.inheritedImages = false;
     p.route = { version: 2, current: p.concepts?.length ? 'concepts' : 'brief' };

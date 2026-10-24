@@ -1,4 +1,5 @@
 import { Codex } from '@openai/codex-sdk';
+import { generateTracing } from './tracing.mjs';
 import { readFile, writeFile, mkdir, realpath } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import { homedir } from 'node:os';
@@ -127,6 +128,7 @@ export async function workflow({root,directory,action,project,run,signal,stage,s
     return result;
   }
   const inputMaster=await saveInput(root,directory,'input-master',project.assets?.master);
+  if(action==='tracing')return generateTracing({project,inputMaster,directory,ask,collectImage,save,result});
   const inputPreview=await saveInput(root,directory,'input-preview',project.assets?.preview);
   if(action==='edit'&&!inputMaster)throw Error('Для правки спочатку потрібен фронтальний декор');
   if(action==='review'&&(!inputMaster||!inputPreview))throw Error('Для перевірки потрібні обидва зображення');
