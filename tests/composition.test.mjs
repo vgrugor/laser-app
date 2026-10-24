@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp,rm,readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
+import { formatReviewSchema } from '../server/master-format.mjs';
 import { validateResult,workflow,loadKnowledge } from '../server/workflow.mjs';
 import { compositionReviewHTML } from '../dist/composition-guidance.js';
 import { flatComposition,passingCompositionChecks } from './fixtures/composition.mjs';
@@ -32,7 +33,7 @@ test('flat designs can mark depth inapplicable and legacy reports still render',
 });
 test('standalone pair review receives saved composition and actual images; active knowledge copies agree',async t=>{
   const directory=await mkdtemp(resolve(tmpdir(),'plywood-composition-'));t.after(()=>rm(directory,{recursive:true,force:true}));
-  let request;await workflow({root,directory,action:'review',project:{...project,assets:{master:png,preview:png},designPlan:plan},run:async input=>{request=input;return {disposition:'pass_visual',findings:[],manual_checks:[],composition_checks:passingCompositionChecks()};},signal:new AbortController().signal,stage:async()=>{},save:{event(){},file:async()=>{}}});
+  let request;await workflow({root,directory,action:'review',project:{...project,assets:{master:png,preview:png},designPlan:plan},run:async input=>{if(input.schema===formatReviewSchema)return {verdict:'pass',panel_bounds:{left:0,top:0,right:1,bottom:1},observation:'Габарити квадратні',suggested_action:''};request=input;return {disposition:'pass_visual',findings:[],manual_checks:[],composition_checks:passingCompositionChecks()};},signal:new AbortController().signal,stage:async()=>{},save:{event(){},file:async()=>{}}});
   assert.equal(request.images.length,2);assert.ok(request.text.includes(plan.spatial_composition.overlaps[0].contour_instruction));assert.ok(request.text.includes('задній контур переривається'));assert.ok(request.text.includes('без перспективного спотворення самої панелі'));assert.ok(request.text.includes('сюжет може передавати перспективу')||request.text.includes('Сюжет усередині панелі може передавати перспективу'));
   const knowledge=await loadKnowledge(root);assert.ok(knowledge.text.includes('Візуальні просторові плани не є шарами фанери'));
   for(const file of ['02-дизайн.md','03-перевірка.md','технології/різання-та-інкрустація.md','manifest.json'])assert.ok((await readFile(resolve(root,'docs/база-знань-v1',file))).equals(await readFile(resolve(root,'dist/knowledge',file))));

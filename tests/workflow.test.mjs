@@ -35,14 +35,15 @@ test('generation runs plan → prompts → master → preview → pair review an
     calls.push(options);const name=stages.at(-1);
     if(name==='plan')return {summary:'Квітка',parts:[{name:'Пелюстки',finish_id:'clear',quantity:7,layer:'top'}],engraving:['Чорні прожилки'],composition:'Центр',spatial_composition:flatComposition,manual_checks:['Ширини у CAD']};
     if(name==='prompts')return {master:'Декор фронтально',preview:'Весь виріб'};
+    if(name==='master-check')return {verdict:'pass',panel_bounds:{left:.04,top:.04,right:.96,bottom:.96},observation:'Пропорції відповідають шаблону',suggested_action:''};
     if(name==='review')return {disposition:'changes_required',findings:[{severity:'blocker',location:'Око',observation:'Світла лінія',suggested_action:'Замінити чорною'}],composition_checks:passingCompositionChecks(),manual_checks:['2 мм у CAD']};
-    const path=resolve(dir,name+'-generated.png');await writeFile(path,png);return 'GENERATED_IMAGE '+path;
+    const path=resolve(dir,name+'-generated.png');await writeFile(path,await readFile(resolve(dir,'format-template.png')));return 'GENERATED_IMAGE '+path;
   };
   const partials=[];
   const result=await workflow({root,directory:dir,action:'generate',project,run,signal:new AbortController().signal,stage:async n=>stages.push(n),save:{event(){},file:async()=>{},partial:async r=>partials.push(structuredClone(r))}});
-  assert.deepEqual(stages,['plan','prompts','master','preview','review']);
-  assert.equal(calls[3].images[0],resolve(dir,'master.png'));
-  assert.equal(calls[4].images.length,2);assert.equal(result.review.disposition,'changes_required');assert.ok(result.assetMetadata.master.sha256);assert.equal(partials.length,2);
+  assert.deepEqual(stages,['plan','prompts','master','master-check','preview','review']);
+  assert.equal(calls[4].images[0],resolve(dir,'master.png'));
+  assert.equal(calls[5].images.length,2);assert.equal(result.review.disposition,'changes_required');assert.ok(result.assetMetadata.master.sha256);assert.equal(partials.length,3);
   assert.equal(result.knowledge.manifestHash.length,64);
 });
 test('edit uses existing master as first reference; failures retain completed master',async t=>{
@@ -51,7 +52,8 @@ test('edit uses existing master as first reference; failures retain completed ma
     const name=stages.at(-1);
     if(name==='plan')return {parts:[{name:'Мотив',finish_id:'clear',quantity:1,layer:'top'}],spatial_composition:flatComposition};
     if(name==='prompts')return {master:'Правка',preview:'Виріб'};
-    if(name==='master'){assert.equal(o.images[0],resolve(dir,'input-master.png'));const path=resolve(dir,'edited.png');await writeFile(path,png);return 'EDITED_IMAGE '+path;}
+    if(name==='master-check')return {verdict:'pass',panel_bounds:{left:.04,top:.04,right:.96,bottom:.96},observation:'Пропорції відповідають',suggested_action:''};
+    if(name==='master'){assert.equal(o.images[0],resolve(dir,'input-master.png'));const path=resolve(dir,'edited.png');await writeFile(path,await readFile(resolve(dir,'format-template.png')));return 'EDITED_IMAGE '+path;}
     throw Error('Generator unavailable');
   };
   await assert.rejects(workflow({root,directory:dir,action:'edit',project:{...project,assets:{master:'data:image/png;base64,'+png.toString('base64')}},run,signal:new AbortController().signal,stage:async n=>stages.push(n),save:{event(){},file:async()=>{},partial:async r=>partials.push(structuredClone(r))}}),/unavailable/);

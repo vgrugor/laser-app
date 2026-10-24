@@ -9,7 +9,8 @@ export const GENERATION_STAGES = Object.freeze([
 export function generationState(p, { connected = true, connectionError = '', launching = false, launchError = '' } = {}) {
   const job = ['generate', 'edit'].includes(p.aiJob?.action) ? p.aiJob : null;
   const running = Boolean(job && ['queued', 'running'].includes(job.status));
-  const index = GENERATION_STAGES.findIndex(step => step.id === job?.stage);
+  const formatStages={'master-check':{label:'Перевірка пропорцій декору',description:'Звіряємо формат PNG та зовнішні габарити декору з шаблоном.'},'master-correct':{label:'Виправлення пропорцій декору',description:'Одна спроба перебудувати композицію у потрібному форматі без розтягування.'},'master-recheck':{label:'Повторна перевірка пропорцій',description:'Перевіряємо результат виправлення перед створенням вигляду виробу.'}};
+  const index = GENERATION_STAGES.findIndex(step => step.id === (formatStages[job?.stage]?'master':job?.stage));
   const outdated = !running && (!job || job.status === 'completed') && Boolean(p.pendingAssetsUpdate?.length);
   const status = launching && !running ? 'starting' : launchError ? 'start_failed'
     : running && connectionError ? 'disconnected' : running && job.cancelRequested ? 'cancelling'
@@ -20,7 +21,7 @@ export function generationState(p, { connected = true, connectionError = '', lau
     canReviewOnly: !launchError && !launching && job?.stage === 'review' && pairApplied && Boolean(p.aiData?.plan) && ['failed', 'interrupted'].includes(job.status),
     stages: GENERATION_STAGES.map((step, i) => ({ ...step,
       state: ['starting','start_failed','outdated'].includes(status) ? 'waiting' : job?.status === 'completed' ? 'done' : i < index ? 'done' : i === index ? running ? 'active' : 'stopped' : 'waiting' })),
-    current: GENERATION_STAGES[index], availableAssets: ['starting','start_failed','outdated'].includes(status) ? [] : job?.availableAssets || [],
+    current: formatStages[job?.stage]||GENERATION_STAGES[index], availableAssets: ['starting','start_failed','outdated'].includes(status) ? [] : job?.availableAssets || [],
   };
 }
 

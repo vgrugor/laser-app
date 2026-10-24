@@ -4,7 +4,7 @@ import { generationScreen } from './generation.js';
 import { conceptIssue } from './concepts.js';
 import { moveToRoute, routeAfterJob, projectRoute } from './project-route.js';
 import { invalidateApproval } from './approval.js';
-const labels={concepts:'Створення 10 концепцій',plan:'План деталей',prompts:'Підготовка промптів',master:'Фронтальний декор',preview:'Вигляд виробу',review:'Перевірка зображень'};
+const labels={concepts:'Створення 10 концепцій',plan:'План деталей',prompts:'Підготовка промптів',master:'Фронтальний декор','master-check':'Перевірка пропорцій','master-correct':'Виправлення пропорцій','master-recheck':'Повторна перевірка пропорцій',preview:'Вигляд виробу',review:'Перевірка зображень'};
 export function createAI({prepareStart=async p=>p,getTypeRevision=()=>undefined,confirmPalette=async()=>true,paletteSummary=()=>'',refreshContext=()=>{},onImagesApplied=()=>{},current,projects,persist,snapshot,render,toast,esc,validate}){
   let connection=null,connectionError='',polling=false;
   const launching=new Set(),launchErrors=new Map();
@@ -134,7 +134,7 @@ export function createAI({prepareStart=async p=>p,getTypeRevision=()=>undefined,
           if(j.result.concepts){p.conceptSetOutdated=false;p.conceptReuseConfirmation=null;p.concepts=j.result.concepts.map((c,i)=>({...c,id:`${j.id}-c${i+1}`}));p.selected=null;p.prepared=false;p.conceptSource='codex';invalidateApproval(p);p.aiReport=null;if(p.assets.master||p.assets.preview)p.pendingAssetsUpdate=['master','preview'];}
           if(Object.keys(assets).length){previous.appliedAssets=Object.keys(assets);p.assets={...p.assets,...assets};markTracingOutdated(p);p.example=null;p.prepared=true;invalidateApproval(p);p.reviews={engraving:'unknown',palette:'unknown',parts:'unknown',composition:'unknown'};p.pendingAssetsUpdate=['master','preview'].filter(k=>!assets[k]);p.aiReport=null;onImagesApplied(p,assets);}
           if(j.result.review){p.aiReport=j.result.review;invalidateApproval(p);}
-          p.aiData=previous.action==='review'?{...p.aiData,review:j.result.review,reviewJobId:j.id,reviewKnowledge:j.result.knowledge}:{...j.result,jobId:j.id};p.updatedAt=new Date().toISOString();
+          p.aiData=previous.action==='review'?{...p.aiData,review:j.result.review,reviewJobId:j.id,reviewKnowledge:j.result.knowledge,...j.result.masterFormat?{masterFormat:j.result.masterFormat}:{}}:{...j.result,jobId:j.id};p.updatedAt=new Date().toISOString();
           if(Object.keys(assets).length)p.aiData.sourceConceptId=previous.conceptId||null;
           previous.message=j.status==='completed'?'Результат збережено. Перегляньте зображення й перевірку.':'Збережено доступний частковий результат. Решта етапів не завершена.';
         }
