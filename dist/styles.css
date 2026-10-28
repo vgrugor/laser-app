@@ -214,8 +214,13 @@
 .panel-route-card img,.panel-route-placeholder{width:100%;aspect-ratio:4/3;object-fit:contain;background:white;border-radius:7px}
 .panel-route-placeholder{display:grid;place-items:center;font-size:25px;color:#9ba795;border:1px dashed #dce2d5}
 .panel-route-name{font-weight:650;font-size:12px;overflow-wrap:anywhere}.panel-route-status{font-size:10px;color:#6a7364}.panel-state-selected .panel-route-status{color:#356143}.panel-state-outdated .panel-route-status{color:#9a6918}
-.panel-step-hint{font-size:13px;line-height:1.6;margin:10px 0}.panel-whole-product{margin-top:14px}.panel-workspace .panel-operations{border-top:0;padding-top:0}
-.panel-image-history,.panel-set-tools,.panel-preparation{border-top:1px solid #e7eadd;padding:12px 0}.panel-image-history summary,.panel-set-tools summary,.panel-preparation summary{font-size:12px;font-weight:650;cursor:pointer}
+.panel-step-hint{font-size:13px;line-height:1.6;margin:10px 0}.panel-whole-product{margin-top:14px}.panel-workspace .panel-operations{border:0;padding-top:0;margin-bottom:0}
+/* Shared disclosure rows keep the same rhythm in collapsed and expanded states. */
+.panel-workspace>:is(.panel-check-tools,.panel-image-history,.panel-preparation,.panel-set-tools){margin:0;padding:0;border-top:1px solid #e7eadd}
+.panel-workspace>:is(.panel-check-tools,.panel-image-history,.panel-preparation,.panel-set-tools)>summary{margin:0;padding:12px 0;font-size:12px;line-height:20px;font-weight:650;cursor:pointer}
+.panel-workspace>:is(.panel-check-tools,.panel-image-history,.panel-preparation,.panel-set-tools)[open]{padding-bottom:12px}
+.panel-workspace>:is(.panel-check-tools,.panel-image-history,.panel-preparation,.panel-set-tools)>summary+*{margin-top:0}
+.panel-workspace>:is(.panel-check-tools,.panel-image-history,.panel-preparation,.panel-set-tools)>:last-child{margin-bottom:0}
 .panel-history-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px;margin-top:12px}
 .panel-history-card{display:flex;flex-direction:column;gap:7px;min-width:0;padding:10px;border:1px solid #e1e6db;border-radius:10px;background:#fafbf8}.panel-history-card img{width:100%;aspect-ratio:4/3;object-fit:contain;background:white;border-radius:6px}.panel-history-card strong{font-size:12px}.panel-history-card small,.panel-history-card p{font-size:10px;line-height:1.5;overflow-wrap:anywhere;margin:0}.panel-history-card button{margin-top:auto}.panel-set-tools .actions-wrap{margin:12px 0}
 @media(max-width:600px){.panel-workspace{padding:14px}.panel-route{grid-template-columns:repeat(2,minmax(0,1fr))}.panel-step-heading h3{font-size:15px}.panel-history-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.panel-workspace .actions-wrap>.btn{max-width:100%;white-space:normal}}
