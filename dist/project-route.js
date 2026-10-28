@@ -1,4 +1,4 @@
-import { multiPanel, panelsReady, validPanelConfiguration } from './panels.js';
+import { multiPanel, panelList, panelsReady, panelsChosen, productPreviewStatus, validPanelConfiguration } from './panels.js';
 import { paletteIsConfirmed } from './palette-confirmation.js';
 
 export const ROUTE_STEPS = Object.freeze([
@@ -27,7 +27,7 @@ export function briefIsReady(p) {
 export function projectRoute(p) {
   const hasConcepts = Boolean(p.concepts?.length);
   const selected = Boolean(p.selected && p.concepts?.some(c => c.id === p.selected));
-  const hasImage = Boolean(p.assets?.master || p.assets?.preview);
+  const hasImage = Boolean(p.assets?.master || p.assets?.preview || multiPanel(p)&&panelList(p).some(x=>x.assets?.master));
   const pair = Boolean(p.assets?.master && p.assets?.preview && (!multiPanel(p)||panelsReady(p)));
   const job = p.aiJob;
   const imageJob = ['generate', 'edit'].includes(job?.action);
@@ -35,7 +35,8 @@ export function projectRoute(p) {
   const historical = hasConcepts || hasImage || selected;
   const brief = briefIsReady(p);
   const palette = paletteIsConfirmed({ ...p, palette: p.palette || [] });
-  const approved = Boolean(p.approved && pair && !p.pendingAssetsUpdate?.length);
+  const previewCurrent=!multiPanel(p)||['current','legacy'].includes(productPreviewStatus(p));
+  const approved = Boolean(p.approved && pair && previewCurrent && !p.pendingAssetsUpdate?.length);
   const available = {
     brief: true,
     palette: brief || historical,
@@ -48,7 +49,7 @@ export function projectRoute(p) {
     brief,
     palette: palette || historical,
     concepts: selected,
-    generation: pair && !p.pendingAssetsUpdate?.length && !(running && imageJob),
+    generation: pair && previewCurrent && (!multiPanel(p)||p.approved||panelsChosen(p)) && !p.pendingAssetsUpdate?.length && !(running && imageJob),
     result: approved,
     saved: approved,
   };
@@ -60,10 +61,12 @@ export function projectRoute(p) {
   if (!palette && !historical && brief) attention('palette', 'Підтвердьте доступні морилки.');
   if (hasConcepts && !selected) attention('concepts', 'Оберіть одну зі збережених концепцій.');
   if (p.aiLaunchErrorAction === 'concepts' && p.aiLaunchError) attention('concepts', 'Не вдалося розпочати створення концепцій. Повторіть запуск.');
-  if (p.pendingAssetsUpdate?.length) attention('generation', 'Зображення потрібно оновити після змін.');
+  if (p.pendingAssetsUpdate?.length) attention('generation', multiPanel(p)?'Продовжуйте окремі запуски панелей і загального вигляду.':'Зображення потрібно оновити після змін.');
   if (hasImage && !approved) {
-    attention('result', !pair ? 'Потрібні обидва зображення: вигляд і декор.'
-      : p.pendingAssetsUpdate?.length ? 'Поточні зображення відповідають попередньому завданню.'
+    if(multiPanel(p)&&panelsReady(p)&&!panelsChosen(p)){attention('result','Оберіть результат кожної панелі перед завершенням виробу.');}
+    else if(multiPanel(p)&&panelsChosen(p)&&!['current','legacy'].includes(productPreviewStatus(p))){attention('result','Створіть або оновіть загальний вигляд за обраними панелями.');}
+    else attention('result', !pair ? multiPanel(p)?'Продовжуйте роботу з панелями, а потім створіть загальний вигляд.':'Потрібні обидва зображення: вигляд і декор.'
+      : p.pendingAssetsUpdate?.length ? multiPanel(p)?'Окремо створіть або оновіть загальний вигляд за актуальними панелями.':'Поточні зображення відповідають попередньому завданню.'
       : Object.values(p.reviews || {}).includes('fail') ? 'У ручній перевірці є позначки «Потрібна правка».'
       : p.aiReport?.disposition === 'changes_required' ? 'Перегляньте зауваження ШІ та прийміть рішення.'
       : 'Перегляньте результат і погодьте вигляд або додайте правки.');
@@ -111,8 +114,8 @@ export function routeAfterJob(p, action, status) {
   if (action === 'concepts' && status === 'completed' && p.concepts?.length) {
     moveToRoute(p, 'concepts');
   } else if (['generate', 'edit'].includes(action) && ['completed', 'failed', 'cancelled', 'interrupted'].includes(status)) {
-    const newImages = Boolean(p.aiJob?.appliedAssets?.length);
-    const completedWithImages = status === 'completed' && Boolean(p.assets?.master || p.assets?.preview);
+    const newImages = Boolean(p.aiJob?.appliedAssets?.length||p.aiJob?.appliedPanels?.length);
+    const completedWithImages = status === 'completed' && Boolean(p.assets?.master || p.assets?.preview || multiPanel(p)&&panelList(p).some(x=>x.assets?.master));
     moveToRoute(p, newImages || completedWithImages ? 'result' : 'generation');
   }
 }

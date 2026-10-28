@@ -1,4 +1,4 @@
-import { multiPanel, activePanel, panelList, panelView, panelSources, markPanelOutdated, captureSinglePanel } from './panels.js';
+import { multiPanel, activePanel, panelList, panelView, panelSources, markPanelOutdated, captureSinglePanel, validatePanelOperation } from './panels.js';
 import { embedPanelResult, applyPanelResult } from './panel-results.js';
 import { TRACING_KINDS, tracingFingerprint, markTracingOutdated } from './tracing.js';
 import { imageAction, recordConceptRun } from './concept-history.js';
@@ -12,7 +12,7 @@ export function createAI({prepareStart=async p=>p,getTypeRevision=()=>undefined,
   const launching=new Set(),launchErrors=new Map();
   const busy=p=>p?.aiJob&&['running','queued'].includes(p.aiJob.status);
   const fingerprint=async p=>{
-    const value=JSON.stringify([getTypeRevision(p),p.title,p.type,p.clockMount||'unspecified',p.width,p.height,p.brief,p.palette,p.layers,p.frame,p.reference,p.assets,p.notes,p.locks,p.selected,p.concepts,panelSources(p)]);
+    const value=JSON.stringify([getTypeRevision(p),p.title,p.type,p.clockMount||'unspecified',p.width,p.height,p.brief,p.palette,p.layers,p.frame,p.reference,p.assets,p.notes,p.locks,p.selected,p.concepts,panelSources(p),(p.panels||[]).map(part=>part.selection?.imageKey||null)]);
     return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');
   };
   async function connect(){
@@ -48,30 +48,33 @@ export function createAI({prepareStart=async p=>p,getTypeRevision=()=>undefined,
     let sourceConcept=null,attemptAt=null,submitted=null,scope=null,panelFingerprints={};
     const ownerId=p.id;launching.add(ownerId);launchErrors.delete(ownerId);
     try{
-      const prepared=await prepareStart(p,action);if(!prepared)return;p=prepared;launching.add(p.id);
+      const prepared=await prepareStart(p,action,options);if(!prepared)return;p=prepared;launching.add(p.id);
       if(current()!==p||busy(p))return;
-      if(multiPanel(p)&&(['edit','tracing'].includes(action)||options.scopePanelId))scope=options.allPanels?null:options.scopePanelId||activePanel(p).id;
+      const target=multiPanel(p)&&['generate','edit'].includes(action)?options.generationTarget||'panel':null;
+      if(multiPanel(p)&&(['edit','tracing'].includes(action)||target==='panel'||options.scopePanelId))scope=options.allPanels?null:options.scopePanelId||activePanel(p).id;
+      if(multiPanel(p))validatePanelOperation({...p,generationTarget:target||undefined,scopePanelId:scope},action);
       if(action==='concepts'&&!await confirmPalette(p))return;
       if(current()!==p||busy(p)||!validate(p))return;
       if(action==='tracing'&&(multiPanel(p)?panelList(p).filter(x=>!scope||x.id===scope).some(x=>!x.assets?.master||x.pendingAssetsUpdate?.length):!p.assets?.master||p.pendingAssetsUpdate?.length)){toast('Спочатку отримайте актуальний кольоровий декор');return;}
       if(imageAction(action)){sourceConcept=p.concepts?.find(c=>c.id===p.selected)||null;attemptAt=new Date().toISOString();}
       p.aiLaunchErrorAction=action;p.aiLaunchError=null;
-      if(['generate','edit'].includes(action)){p.aiLaunchAction=action;p.aiLaunchPanelId=scope;}
+      if(['generate','edit'].includes(action)){p.aiLaunchAction=action;p.aiLaunchPanelId=scope;p.aiLaunchTarget=target;}
       if(['generate','edit'].includes(action))moveToRoute(p,'generation');
       if(action==='concepts')moveToRoute(p,'concepts');
       await persist();render();
       await connect();if(!connection){launchErrors.set(p.id,connectionError);p.aiLaunchError=connectionError;failedLaunch(p,sourceConcept,action,attemptAt,connectionError);await persist();render();toast('Для генерації потрібен локальний сервер');return;}
       if(action==='edit'&&!panelView(p,scope||undefined).notes.length){toast('Спочатку додайте опис правки');return;}
-      const {versions,aiJob,aiReport,aiData,resultDraft,aiLaunchAction,aiLaunchError,aiLaunchErrorAction,conceptRuns,tracing,aiLaunchPanelId,...project}=structuredClone(p);
-      project.typeRevision=getTypeRevision(p);project.scopePanelId=scope;
-      if(project.panels)for(const part of project.panels){delete part.tracing;delete part.resultDraft;part.assets={master:part.assets?.master||null};}
+      const {versions,aiJob,aiReport,aiData,resultDraft,aiLaunchAction,aiLaunchError,aiLaunchErrorAction,conceptRuns,tracing,aiLaunchPanelId,aiLaunchTarget,selection,...project}=structuredClone(p);
+      if(aiData?.sharedPlan)project.sharedPlan=aiData.sharedPlan;if(!multiPanel(p)&&aiData)project.cachedPlanning=aiData.preparedCache||aiData;
+      project.typeRevision=getTypeRevision(p);project.scopePanelId=scope;if(target)project.generationTarget=target;
+      if(project.panels)for(const part of project.panels){delete part.tracing;delete part.resultDraft;delete part.imageHistory;delete part.imageHistoryCounter;delete part.imageHistoryBackfilled;part.assets={master:part.assets?.master||null};}
       if(action==='tracing'&&multiPanel(p))for(const part of panelList(p))panelFingerprints[part.id]=await tracingFingerprint(panelView(p,part.id));
-      if(action==='generate'&&p.selected){const concept=p.concepts.find(c=>c.id===p.selected),issue=conceptIssue(p,concept);if(issue){toast(issue);return;}project.palette=[...(concept.palette||p.palette)];project.frame=concept.frame;}
+      if(action==='generate'&&target!=='preview'&&p.selected){const concept=p.concepts.find(c=>c.id===p.selected),issue=conceptIssue(p,concept);if(issue){toast(issue);return;}project.palette=[...(concept.palette||p.palette)];project.frame=concept.frame;}
       if(['review','tracing'].includes(action)&&aiData?.plan)project.designPlan=aiData.plan;
       if(imageAction(action))sourceConcept=project.concepts?.find(c=>c.id===project.selected)||null;
       const revision=action==='tracing'&&!multiPanel(p)?await tracingFingerprint(p):await fingerprint(p);
       const response=await request('/api/jobs',{action,project});
-      submitted=response.id;p.aiJob={id:response.id,action,scopePanelId:scope,panelFingerprints,conceptId:sourceConcept?.id||null,conceptTitle:sourceConcept?.title||'',startedAt:attemptAt,fingerprint:revision,status:'running',stage:'Підготовка'};
+      submitted=response.id;p.aiJob={id:response.id,action,generationTarget:target,scopePanelId:scope,panelFingerprints,conceptId:sourceConcept?.id||null,conceptTitle:sourceConcept?.title||'',startedAt:attemptAt,fingerprint:revision,status:'running',stage:'Підготовка'};
       recordConceptRun(p,{id:response.id,jobId:response.id,conceptId:sourceConcept?.id,conceptTitle:sourceConcept?.title||'',projectId:p.id,projectTitle:project.title,action,status:'running',startedAt:attemptAt,assets:{}});
       if(action!=='tracing')moveToRoute(p,action==='concepts'?'concepts':['generate','edit'].includes(action)?'generation':'result');
       await persist();render();await poll();return response.id;
@@ -126,7 +129,7 @@ export function createAI({prepareStart=async p=>p,getTypeRevision=()=>undefined,
           if(await fingerprint(p)!==previous.fingerprint){previous.status='stale';finishRun(p,previous);await persist();render();continue;}
           await snapshot(p,false,previous.action==='tracing'?'Перед оновленням контурів панелей':'Перед застосуванням результату комплекту');
           applyPanelResult(p,j,embedded);
-          if(previous.action!=='tracing'&&Object.keys(embedded.assets).length)onImagesApplied(p,embedded.assets);
+          if(previous.action!=='tracing'&&(Object.keys(embedded.assets).length||previous.appliedPanels?.length))onImagesApplied(p,{...embedded.assets,...previous.appliedPanels?.length&&!embedded.assets.master?{master:embedded.panels.find(x=>x.assets.master)?.assets.master}:{}});
           captureSinglePanel(p);previous.status=j.status;previous.finishedAt=j.finishedAt||null;previous.cancelRequested=false;finishRun(p,previous);routeAfterJob(p,previous.action,j.status);await persist();render();continue;
         }
         if(previous.action==='tracing'){
@@ -151,7 +154,7 @@ export function createAI({prepareStart=async p=>p,getTypeRevision=()=>undefined,
           if(j.result.concepts){if(multiPanel(p))markPanelOutdated(p);p.conceptSetOutdated=false;p.conceptReuseConfirmation=null;p.concepts=j.result.concepts.map((c,i)=>({...c,id:`${j.id}-c${i+1}`}));p.selected=null;p.prepared=false;p.conceptSource='codex';invalidateApproval(p);p.aiReport=null;if(p.assets.master||p.assets.preview)p.pendingAssetsUpdate=['master','preview'];}
           if(Object.keys(assets).length){previous.appliedAssets=Object.keys(assets);p.assets={...p.assets,...assets};markTracingOutdated(p);p.example=null;p.prepared=true;invalidateApproval(p);p.reviews={engraving:'unknown',palette:'unknown',parts:'unknown',composition:'unknown'};p.pendingAssetsUpdate=['master','preview'].filter(k=>!assets[k]);p.aiReport=null;onImagesApplied(p,assets);}
           if(j.result.review){p.aiReport=j.result.review;invalidateApproval(p);}
-          p.aiData=previous.action==='review'?{...p.aiData,review:j.result.review,reviewJobId:j.id,reviewKnowledge:j.result.knowledge,...j.result.masterFormat?{masterFormat:j.result.masterFormat}:{}}:{...j.result,jobId:j.id};p.updatedAt=new Date().toISOString();
+          if(previous.action!=='review'&&!Object.keys(assets).length&&j.result.plan){p.aiData={...p.aiData,preparedCache:{plan:j.result.plan,prompts:j.result.prompts,planning:j.result.planning,preparation:j.result.preparation}};}else p.aiData=previous.action==='review'?{...p.aiData,review:j.result.review,reviewJobId:j.id,reviewKnowledge:j.result.knowledge,...j.result.masterFormat?{masterFormat:j.result.masterFormat}:{}}:{...j.result,preparedCache:null,jobId:j.id};p.updatedAt=new Date().toISOString();
           if(Object.keys(assets).length)p.aiData.sourceConceptId=previous.conceptId||null;
           previous.message=j.status==='completed'?'Результат збережено. Перегляньте зображення й перевірку.':'Збережено доступний частковий результат. Решта етапів не завершена.';
         }
@@ -161,8 +164,11 @@ export function createAI({prepareStart=async p=>p,getTypeRevision=()=>undefined,
     finally{polling=false;}
   }
   async function action(name){
+    if(name==='panel-generate'||name==='panel-regenerate')return start('generate',{generationTarget:'panel',scopePanelId:activePanel(current()).id});
+    if(name==='preview')return start('generate',{generationTarget:'preview'});
+    if(name==='generate-all')return start('generate',{generationTarget:'all'});
     if(['concepts','generate','edit','review','tracing'].includes(name))return start(name);
-    if(name==='retry-generation')return start((current()?.aiLaunchAction||current()?.aiJob?.action)==='edit'?'edit':'generate',{scopePanelId:current()?.aiLaunchPanelId||current()?.aiJob?.scopePanelId});
+    if(name==='retry-generation'){const p=current(),target=p?.aiLaunchTarget||p?.aiJob?.generationTarget||'all';return start((p?.aiLaunchAction||p?.aiJob?.action)==='edit'?'edit':'generate',{scopePanelId:target==='preview'?null:p?.aiLaunchPanelId||p?.aiJob?.scopePanelId,generationTarget:target});}
     if(name==='trace-all')return start('tracing',{allPanels:true});
     if(name==='panel-review')return start('review',{scopePanelId:activePanel(current()).id});
     if(name==='reconnect'){await connect();refresh();await poll();}

@@ -1,4 +1,4 @@
-import { multiPanel, panelList } from '../dist/panels.js';
+import { validatePanelOperation, multiPanel, panelList } from '../dist/panels.js';
 import { conceptSource } from './concept-source.mjs';
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir, rename, readdir, realpath } from 'node:fs/promises';
@@ -42,7 +42,7 @@ export async function createApp({root=rootDefault,run=createRunner(),runWorkflow
         const data=await body(req);
         if(!['concepts','generate','edit','review','tracing','type-assistant'].includes(data.action))throw Error('Невідома дія');
         const catalog=await catalogStore.read();
-        if(data.action==='type-assistant')validateAssistantRequest(data.assistant);else validateProject(data.project,catalog);
+        if(data.action==='type-assistant')validateAssistantRequest(data.assistant);else {validateProject(data.project,catalog);if(multiPanel(data.project))validatePanelOperation(data.project,data.action);}
         if(data.action==='tracing'&&(multiPanel(data.project)?panelList(data.project).filter(x=>!data.project.scopePanelId||x.id===data.project.scopePanelId).some(x=>!x.assets?.master||x.pendingAssetsUpdate?.length):!data.project.assets?.master||data.project.pendingAssetsUpdate?.length))throw Error('Для контурного рисунка потрібен актуальний кольоровий декор');
         if([...jobs.values()].some(j=>j.status==='running')){json(res,409,{error:'Зараз виконується інше завдання. Дочекайтеся або скасуйте його.'});return;}
         const id=randomUUID(),directory=resolve(runs,id),controller=new AbortController();

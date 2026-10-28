@@ -1,4 +1,4 @@
-import { multiPanel, panelsReady, panelSources, panelList } from './panels.js';
+import { multiPanel, panelsReady, panelSources, panelList, panelsChosen, productPreviewStatus, bindProductPreview } from './panels.js';
 import { moveToRoute } from './project-route.js';
 export function invalidateApproval(project){project.approved=false;project.approvedAt=null;project.appearanceApproval=null;}
 export async function approvalSignature(p,typeRevision){
@@ -8,6 +8,9 @@ export async function approvalSignature(p,typeRevision){
 export function approvalBlocker(p){
   if(['running','queued'].includes(p.aiJob?.status))return 'Дочекайтеся завершення поточного завдання перед прийняттям виробу.';
   if(multiPanel(p)&&!panelsReady(p))return 'Спочатку отримайте актуальний декор усіх панелей комплекту.';
+  if(multiPanel(p)&&!p.approved&&!panelsChosen(p))return 'Спочатку оберіть результат кожної панелі.';
+  if(multiPanel(p)&&productPreviewStatus(p)==='outdated')return 'Створіть або оновіть загальний вигляд виробу за поточними панелями.';
+  if(multiPanel(p)&&p.pendingAssetsUpdate?.includes('preview'))return 'Створіть або оновіть загальний вигляд виробу за готовими панелями.';
   if(p.pendingAssetsUpdate?.length)return 'Зображення ще відповідають попередньому завданню. Додайте оновлені вигляд і декор.';
   if(!p.assets?.master||!p.assets?.preview)return 'Спочатку додайте обидва зображення.';
   if(Object.values(p.reviews||{}).includes('fail'))return 'У вашій ручній перевірці є позначка «Потрібна правка». Перегляньте її перед погодженням.';
@@ -27,6 +30,7 @@ export function createApproval({esc,modal,close,toast,persist,snapshot,render,ge
         const error=approvalBlocker(p);
         if(error||signature!==await approvalSignature(p,getTypeRevision(p))){document.querySelector('#approval-message').textContent=error||'Проєкт або перевірка змінилися. Закрийте вікно та перегляньте поточний результат перед погодженням.';return;}
         const at=new Date().toISOString();
+        if(multiPanel(p)&&productPreviewStatus(p)==='legacy')p.previewProvenance=bindProductPreview(p,{origin:'user-confirmed',at,typeRevision:getTypeRevision(p)});
         p.approved=true;p.approvedAt=at;p.updatedAt=at;
         p.appearanceApproval={actor:'user',scope:'appearance',at,revisionSignature:signature,aiRemarksAccepted:override,comment:override?(document.querySelector('#approval-reason')?.value||'').trim().slice(0,2000):'',aiReview:structuredClone(p.aiReport||null)};
         moveToRoute(p,'saved');

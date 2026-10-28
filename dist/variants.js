@@ -8,15 +8,15 @@ export function createVariant(source, projects, { mode = 'parameters', id = cryp
   const p = structuredClone(source);
   Object.assign(p, { id, title: `${rootTitle.slice(0,80)} · варіант ${number}`, createdAt: at, updatedAt: at,
     approved: false, approvedAt: null, appearanceApproval: null, versions: [], versionCounter: 0,
-    conceptRuns: [], aiJob: null, aiLaunchAction: null, aiLaunchError: null, aiLaunchErrorAction: null, resultDraft: null, example: null,
+    conceptRuns: [], aiJob: null, aiLaunchAction: null, aiLaunchTarget:null, aiLaunchPanelId:null, aiLaunchError: null, aiLaunchErrorAction: null, resultDraft: null, example: null,
     conceptReuseConfirmation: null,
     variantOf: { projectId: source.id, title: source.title, rootId, rootTitle, number,
       inheritedImages: Boolean(source.assets?.master || source.assets?.preview) } });
   if (mode === 'concepts') {
-    Object.assign(p, { assets: { master: null, preview: null }, pendingAssetsUpdate: [], selected: null,
+    Object.assign(p, { selection:null, assets: { master: null, preview: null }, pendingAssetsUpdate: [], selected: null,
       prepared: false, aiData: null, aiReport: null, tracing: null, notes: [], locks: [],
       reviews: { engraving: 'unknown', palette: 'unknown', parts: 'unknown', composition: 'unknown' } });
-    for(const part of p.panels||[])Object.assign(part,{assets:{master:null},aiData:null,aiReport:null,tracing:null,notes:[],locks:[],resultDraft:null,pendingAssetsUpdate:[]});
+    for(const part of p.panels||[])Object.assign(part,{selection:null,imageHistory:[],imageHistoryCounter:0,imageHistoryBackfilled:true,assets:{master:null},aiData:null,aiReport:null,tracing:null,notes:[],locks:[],resultDraft:null,pendingAssetsUpdate:[]});
     p.variantOf.inheritedImages = false;
     p.route = { version: 2, current: p.concepts?.length ? 'concepts' : 'brief' };
   }

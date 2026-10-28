@@ -43,7 +43,7 @@ test('generation runs plan → prompts → master → preview → pair review an
   const result=await workflow({root,directory:dir,action:'generate',project,run,signal:new AbortController().signal,stage:async n=>stages.push(n),save:{event(){},file:async()=>{},partial:async r=>partials.push(structuredClone(r))}});
   assert.deepEqual(stages,['plan','prompts','master','master-check','preview','review']);
   assert.equal(calls[4].images[0],resolve(dir,'master.png'));
-  assert.equal(calls[5].images.length,2);assert.equal(result.review.disposition,'changes_required');assert.ok(result.assetMetadata.master.sha256);assert.equal(partials.length,3);
+  assert.equal(calls[5].images.length,2);assert.equal(result.review.disposition,'changes_required');assert.ok(result.assetMetadata.master.sha256);assert.equal(partials.filter(x=>x.assets.master).length,3);assert.ok(partials[0].planning?.planHash);assert.ok(partials[1].planning?.promptsHash);
   assert.equal(result.knowledge.manifestHash.length,64);
 });
 test('edit uses existing master as first reference; failures retain completed master',async t=>{
@@ -57,7 +57,7 @@ test('edit uses existing master as first reference; failures retain completed ma
     throw Error('Generator unavailable');
   };
   await assert.rejects(workflow({root,directory:dir,action:'edit',project:{...project,assets:{master:'data:image/png;base64,'+png.toString('base64')}},run,signal:new AbortController().signal,stage:async n=>stages.push(n),save:{event(){},file:async()=>{},partial:async r=>partials.push(structuredClone(r))}}),/unavailable/);
-  assert.equal(partials[0].assets.master,'master.png');assert.ok(await readFile(resolve(dir,'master.png')));
+  assert.equal(partials.find(x=>x.assets.master)?.assets.master,'master.png');assert.ok(await readFile(resolve(dir,'master.png')));
 });
 test('local HTTP lifecycle, anti-CSRF, cancellation and restart recovery',async t=>{
   const dir=await temp(t);await mkdir(resolve(dir,'dist'));await writeFile(resolve(dir,'dist/index.html'),'<h1>Test</h1>');await writeFile(resolve(dir,'dist/product-types.json'),await readFile(resolve(root,'dist/product-types.json')));
@@ -79,4 +79,42 @@ test('local HTTP lifecycle, anti-CSRF, cancellation and restart recovery',async 
   const disk=JSON.parse(await readFile(resolve(dir,'artifacts/runs',id,'job.json')));assert.equal(disk.status,'cancelled');
   disk.status='running';await writeFile(resolve(dir,'artifacts/runs',id,'job.json'),JSON.stringify(disk));
   const recovered=await createApp({root:dir,run:()=>{}});assert.equal(recovered.jobs.get(id).status,'interrupted');await recovered.close();
+});
+
+test('in-process panel job preserves partial files, scope and preparation across cancellation and server recovery',async t=>{
+  const {Readable}=await import('node:stream');
+  const directory=await temp(t);await mkdir(resolve(directory,'dist'));
+  await writeFile(resolve(directory,'dist/product-types.json'),await readFile(resolve(root,'dist/product-types.json')));
+  const input={...structuredClone(project),generationTarget:'panel',scopePanelId:'wall',panels:[
+    {id:'lid',name:'Кришка',width:160,height:120,assets:{master:'data:image/png;base64,'+png.toString('base64')}},
+    {id:'wall',name:'Стінка',width:160,height:60,assets:{master:null}}
+  ]};
+  const partial={generationTarget:'panel',scopePanelId:'wall',assets:{},sharedPlan:{signature:'shared',content:{summary:'Keep this plan'}},panels:[{id:'wall',assets:{master:'panel-2-master.png'},plan:{parts:[]},planning:{signature:'local'}}]};
+  let executions=0;
+  const app=await createApp({root:directory,run:()=>{throw Error('No real inference');},runWorkflow:async({directory,signal,stage,save})=>{
+    executions++;await stage({stage:'master-check',panelId:'wall',panelName:'Стінка',panelIndex:2,panelCount:2});
+    await writeFile(resolve(directory,'panel-2-master.png'),png);await save.partial(partial);
+    await new Promise((resolve,reject)=>{if(signal.aborted)reject(Error('Cancelled'));else signal.addEventListener('abort',()=>reject(Error('Cancelled')),{once:true});});
+  }});
+  t.after(()=>app.close());app.server.address=()=>({port:8765});
+  function request(path,method='GET',data,headers={}){
+    const req=Readable.from(data?[Buffer.from(JSON.stringify(data))]:[]);Object.assign(req,{url:path,method,headers:{host:'127.0.0.1:8765',...headers}});
+    return new Promise(resolve=>app.server.emit('request',req,{status:200,setHeader(){},writeHead(status){this.status=status;},end(body){resolve({status:this.status,body,data:body&&String(body).startsWith('{')?JSON.parse(body):null});}}));
+  }
+  const token=(await request('/api/status')).data.token,headers={'x-plywood-token':token},body={action:'generate',project:input};
+  assert.equal((await request('/api/jobs','POST',body)).status,403);assert.equal((await request('/api/jobs','POST',body,{...headers,origin:'https://evil.example'})).status,403);
+  const submitted=await request('/api/jobs','POST',body,headers);assert.equal(submitted.status,202);const {id}=submitted.data;
+  assert.equal((await request('/api/jobs','POST',body,headers)).status,409);
+  let job;for(let i=0;i<100;i++){job=(await request('/api/jobs/'+id)).data;if(job.result)break;await new Promise(r=>setTimeout(r,5));}
+  assert.equal(executions,1);assert.equal(job.panelId,'wall');assert.deepEqual(job.result,partial);
+  assert.deepEqual((await request('/api/assets/'+id+'/panel-2-master.png')).body,png);
+  const savedRequest=JSON.parse(await readFile(resolve(directory,'artifacts/runs',id,'request.json')));
+  assert.equal(savedRequest.project.scopePanelId,'wall');assert.equal(savedRequest.project.generationTarget,'panel');
+  assert.equal((await request('/api/jobs/'+id+'/cancel','POST',null,headers)).status,200);
+  let disk;for(let i=0;i<100;i++){disk=JSON.parse(await readFile(resolve(directory,'artifacts/runs',id,'job.json')));if(disk.status==='cancelled')break;await new Promise(r=>setTimeout(r,5));}
+  assert.equal(disk.status,'cancelled');assert.deepEqual(disk.result,partial);
+  disk.status='running';await writeFile(resolve(directory,'artifacts/runs',id,'job.json'),JSON.stringify(disk));
+  const recovered=await createApp({root:directory,run:()=>{throw Error('No inference on recovery');}});t.after(()=>recovered.close());
+  assert.equal(recovered.jobs.get(id).status,'interrupted');assert.deepEqual(recovered.jobs.get(id).result,partial);
+  assert.deepEqual(await readFile(resolve(directory,'artifacts/runs',id,'panel-2-master.png')),png);
 });

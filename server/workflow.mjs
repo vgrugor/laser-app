@@ -1,3 +1,4 @@
+import { PLANNING_VERSION, digest, localPlanSignature, cachedPreparation } from './planning.mjs';
 import { multiPanel, validatePanels, panelMetadata } from '../dist/panels.js';
 import { panelWorkflow } from './panels.mjs';
 import { Codex } from '@openai/codex-sdk';
@@ -119,7 +120,7 @@ export function createRunner() {
   };
 }
 
-export async function workflow({root,directory,action,project,run,signal,stage,save,knowledge,catalog}) {
+export async function workflow({root,directory,action,project,run,signal,stage,save,knowledge,catalog,style={images:[],references:[]}}) {
   catalog=catalog||await loadCatalog(root);
   validateProject(project,catalog);
   if(multiPanel(project)&&action!=='concepts')return panelWorkflow({root,directory,action,project,run,signal,stage,save,knowledge,catalog,execute:workflow,collectImage,schemas});
@@ -134,30 +135,41 @@ export async function workflow({root,directory,action,project,run,signal,stage,s
     result.concepts=(await textTask('concepts','Роль концептуаліста. Дай рівно 10 різних текстових концепцій за задумом, з конкретним сюжетом, композицією та поділом на кольорові деталі. У кожній description назви головний акцент, дію або зв’язок мотивів і конкретне перекривання, якщо це просторова сцена. Варіюй ракурс об’єктів усередині декору, масштаб і глибину, а не лише їх розстановку. Для орнаменту чи символу поясни свідомо пласке рішення; не нав’язуй три плани кожній концепції. Обирай гармонійну підмножину доступної палітри. Поле palette — ID кольорів, frame — engraved/cut/none. Не генеруй зображення.',[reference])).concepts;
     return result;
   }
+  const styleGuide=style.references.length?`\nОБРАНІ РЕФЕРЕНСИ СТИЛЮ (у порядку додаткових вкладених зображень): ${JSON.stringify(style.references)}. Відтворюй спільну манеру силуетів, чорного гравіювання, обрамлення й кольорових мас. Збережи власний сюжет, габарити та композиційну роль поточної панелі. Не копіюй мотиви іншої панелі та не створюй колаж. Технологія й доступна палітра мають перевагу над референсами.`:'';
   const inputMaster=await saveInput(root,directory,'input-master',project.assets?.master);
   if(action==='tracing')return generateTracing({project,inputMaster,directory,ask,collectImage,save,result});
   const inputPreview=await saveInput(root,directory,'input-preview',project.assets?.preview);
   if(action==='edit'&&!inputMaster)throw Error('Для правки спочатку потрібен фронтальний декор');
   if(action==='review'&&(!inputMaster||!project.panelOnly&&!inputPreview))throw Error('Для перевірки потрібні обидва зображення');
   if(action!=='review'){
-    result.plan=await textTask('plan','Роль конструктора. Підготуй план деталей для обраної концепції. Заповни spatial_composition: mode=flat/spatial та rationale; focal_point і eye_path; planes з назвами об’єктів; interactions як конкретні дії/опора/контакт; overlaps з front, back, contour_instruction (де зникає задній контур), manufacturing_note (які видимі фрагменти вирізаються). Для spatial задай щонайменше два змістовні плани, а не обов’язково три. Для flat поясни вибір і не вигадуй фон заради планів. occlusion_rationale пояснює перекривання або їх доречну відсутність. engraving_cues прив’язуй через surface_part до точної назви parts.name, задавай black_marks і purpose; engraving_rationale пояснює достатність штрихів або їх відсутність. Перерахуй додаткові роз’єднані видимі фрагменти, що виникли через перекривання. Це візуальна глибина, а не додаткові фізичні шари. Одна морилка на фізичну деталь, не більше 15 деталей бажано. Фон і вирізану рамку рахуй; підкладку та корпус окремо. Укажи невиміряні ширини і кріплення в manual_checks. Для правки врахуй поточні зображення, список правок і зафіксовані рішення.',[reference,...action==='edit'?[inputMaster,inputPreview]:[]]);
-    result.prompts=await textTask('prompts','Роль автора промптів. За планом нижче створи два детальні промпти. master: панель строго фронтально, без перспективного спотворення самої панелі та фотографічних тіней; сюжет може мати глибину й перспективу всередині декору. Дослівно за змістом передай spatial_composition: ієрархію, плани, взаємодію, кожну пару перекривання й переривання заднього контуру, а також цільові чорні штрихи форми. Мінімальна фактура дерева не означає відсутність потрібного гравіювання. Не замінюй black_marks довільними градієнтами або світлими лініями на чорному. preview: весь виріб з абсолютно тим самим декором, формою, деталями та кольорами. Підкресли чорне гравіювання, без світлого гравіювання, один колір на деталь, відступи й баланс. Для правки переліч збережені рішення.\nПЛАН\n'+JSON.stringify(result.plan));
+    const hashImage=async path=>path?digest(await readFile(path)):null;
+    const signature=localPlanSignature(p,action,k,type,{sharedSignature:project.sharedPlanningSignature,styleReferences:style.references,referenceHash:await hashImage(reference),inputMasterHash:action==='edit'?await hashImage(inputMaster):null,inputPreviewHash:action==='edit'?await hashImage(inputPreview):null});
+    const cached=cachedPreparation(project.cachedPlanning,signature,p,validateResult);
+    result.preparation={planReused:Boolean(cached.plan),promptsReused:Boolean(cached.prompts),sharedPlanReused:project.sharedPlanReused===true,styleReferences:style.references};
+    if(cached.plan){await stage('plan-cache');result.plan=cached.plan;}else{
+    result.plan=await textTask('plan',styleGuide+'Роль конструктора. Підготуй план деталей для обраної концепції. Заповни spatial_composition: mode=flat/spatial та rationale; focal_point і eye_path; planes з назвами об’єктів; interactions як конкретні дії/опора/контакт; overlaps з front, back, contour_instruction (де зникає задній контур), manufacturing_note (які видимі фрагменти вирізаються). Для spatial задай щонайменше два змістовні плани, а не обов’язково три. Для flat поясни вибір і не вигадуй фон заради планів. occlusion_rationale пояснює перекривання або їх доречну відсутність. engraving_cues прив’язуй через surface_part до точної назви parts.name, задавай black_marks і purpose; engraving_rationale пояснює достатність штрихів або їх відсутність. Перерахуй додаткові роз’єднані видимі фрагменти, що виникли через перекривання. Це візуальна глибина, а не додаткові фізичні шари. Одна морилка на фізичну деталь, не більше 15 деталей бажано. Фон і вирізану рамку рахуй; підкладку та корпус окремо. Укажи невиміряні ширини і кріплення в manual_checks. Для правки врахуй поточні зображення, список правок і зафіксовані рішення.',[reference,...action==='edit'?[inputMaster,inputPreview]:[],...style.images]);
+    }
+    result.planning={version:PLANNING_VERSION,signature,planHash:digest(result.plan)};await save.partial?.(result);
+    if(cached.prompts){await stage('prompts-cache');result.prompts=cached.prompts;}else{
+    result.prompts=await textTask('prompts',styleGuide+'Роль автора промптів. За планом нижче створи два детальні промпти. master: панель строго фронтально, без перспективного спотворення самої панелі та фотографічних тіней; сюжет може мати глибину й перспективу всередині декору. Дослівно за змістом передай spatial_composition: ієрархію, плани, взаємодію, кожну пару перекривання й переривання заднього контуру, а також цільові чорні штрихи форми. Мінімальна фактура дерева не означає відсутність потрібного гравіювання. Не замінюй black_marks довільними градієнтами або світлими лініями на чорному. preview: весь виріб з абсолютно тим самим декором, формою, деталями та кольорами. Підкресли чорне гравіювання, без світлого гравіювання, один колір на деталь, відступи й баланс. Для правки переліч збережені рішення.\nПЛАН\n'+JSON.stringify(result.plan),style.images);
+    }
+    result.planning.promptsHash=digest(result.prompts);await save.partial?.(result);
     const template=await createFormatTemplate(directory,p);
     result.masterFormat={version:1,target:masterFormatSpec(p),correctionAttempted:false,pending:true,checks:[]};
     const generate=async(kind,prompt,images,stageName=kind)=>{
-      const text=`$imagegen Використай лише вбудований інструмент генерації/редагування растрових зображень. Можна прочитати інструкцію imagegen і знайти інструмент. Заборонено підміняти генерацію кодом, SVG, shell-рендером, браузером або API. Не редагуй файли застосунку. ${action==='edit'&&kind==='master'?'Редагуй поточний master, зберігай усе, що не стосується правки. Інші зображення — референси.':''} ${kind==='preview'?'Перше вкладене зображення — створений master, точно перенеси його декор на виріб.':''}\n${base}\nПЛАН\n${JSON.stringify(result.plan)}\nЗАВДАННЯ\n${prompt}\nНа успіх поверни тільки GENERATED_IMAGE та абсолютний шлях до фактичного PNG. При недоступності або помилці опиши причину. Не вигадуй файл.`;
+      const text=`$imagegen Використай лише вбудований інструмент генерації/редагування растрових зображень. Можна прочитати інструкцію imagegen і знайти інструмент. Заборонено підміняти генерацію кодом, SVG, shell-рендером, браузером або API. Не редагуй файли застосунку. ${action==='edit'&&kind==='master'?'Редагуй поточний master, зберігай усе, що не стосується правки. Інші зображення — референси.':''} ${kind==='preview'?'Перше вкладене зображення — створений master, точно перенеси його декор на виріб.':''}\n${base}${styleGuide}\nПЛАН\n${JSON.stringify(result.plan)}\nЗАВДАННЯ\n${prompt}\nНа успіх поверни тільки GENERATED_IMAGE та абсолютний шлях до фактичного PNG. При недоступності або помилці опиши причину. Не вигадуй файл.`;
       const final=await ask(stageName,text,null,images,true);
       const artifact=await collectImage(final,directory);const path=resolve(directory,kind+'.png');await writeFile(path,artifact.bytes);
       result.assets[kind]=kind+'.png';result.assetMetadata[kind]={sha256:artifact.sha256,pixel_dimensions:artifact.pixel_dimensions,prompt};
-      if(kind==='master')result.review={disposition:'not_checked',findings:[],manual_checks:['Перевірку нового декору й пари зображень ще не завершено.']};
+      if(kind==='master')result.review={disposition:'not_checked',findings:[],manual_checks:[project.panelOnly?'Повну перевірку панелі можна запустити окремо.':'Перевірку нового декору й пари зображень ще не завершено.']};
       await save.partial(result);return path;
     };
     const guide='Геометричний шаблон format-template.png — лише пропорції полотна й габаритний прямокутник декору. Лінія шаблону не є обов’язковою рамкою або контуром різання. Зберігай задану задумом форму виробу, розміщуючи її в цих габаритах. Не друкуй шаблон у готовому декорі.';
-    let master=await generate('master',result.prompts.master+'\n'+guide,action==='edit'?[inputMaster,template,reference]:[template,reference]);
+    let master=await generate('master',result.prompts.master+'\n'+guide,action==='edit'?[inputMaster,template,reference,...style.images]:[template,reference,...style.images]);
     const checkFormat=async name=>{
       const check=await inspectMasterFormat({project:p,artifact:result.assetMetadata.master,master,template,ask,signal,name});
       result.masterFormat.checks.push(check);result.masterFormat.pending=false;
-      result.review=applyFormatReview({disposition:'not_checked',findings:[],manual_checks:['Повну перевірку пари зображень ще не завершено.']},result.masterFormat);
+      result.review=applyFormatReview({disposition:'not_checked',findings:[],manual_checks:[project.panelOnly?'Повну перевірку панелі можна запустити окремо.':'Повну перевірку пари зображень ще не завершено.']},result.masterFormat);
       await save.partial(result);return check;
     };
     const firstCheck=await checkFormat('master-check');
@@ -165,14 +177,11 @@ export async function workflow({root,directory,action,project,run,signal,stage,s
       result.masterFormat.correctionAttempted=true;result.masterFormat.pending=true;await save.partial(result);
       const original=resolve(directory,'master-before-format-fix.png');await copyFile(master,original);
       const correction=`ВИПРАВЛЕННЯ ПРОПОРЦІЙ, одна спроба. Перше зображення — поточний master, друге — габаритний шаблон. ${masterFormatGuidance(p)} ${guide} Вимоги до габаритів мають перевагу над фіксацією старих пропорцій. Збережи сюжет, морилки й поділ на деталі. Перебудуй композицію, поля та форму основи, не розтягуй зображення механічно, не обрізай виріб і не маскуй проблему білими смугами. Зауваження перевірки: ${firstCheck.observation} ${firstCheck.suggestedAction}`;
-      master=await generate('master',correction,[original,template,reference],'master-correct');
+      master=await generate('master',correction,[original,template,reference,...style.images],'master-correct');
       await checkFormat('master-recheck');
     }
 
-    if(project.panelOnly){
-      result.review=await textTask('review','Перевір одну фронтальну панель: технологію, морилки, композицію, гравіювання, відповідність її сюжету спільній концепції комплекту. Це не колаж і не вигляд цілого виробу. Заповни сім composition_checks; pair_consistency=not_applicable, оскільки інші панелі й вигляд виробу перевіряються окремо. Невиміряну геометрію залиш ручною перевіркою.\nПЛАН\n'+JSON.stringify(result.plan),[master]);
-      applyFormatReview(result.review,result.masterFormat);return result;
-    }
+    if(project.panelOnly)return result;
     const preview=await generate('preview',result.prompts.preview,[master,...action==='edit'?[inputPreview]:[]]);
     result.review=await textTask('review','Роль перевіряльника. Перше зображення master, друге preview. Оціни технологію та дизайн, відповідність пари, палітру, лише чорне гравіювання, відсутність зайвих шарів. Невиміряні ширини, точну кількість деталей і кріплення познач ручними перевірками. pass_visual не є дозволом на різання. Дай конкретні місця й виправлення. У composition_checks заповни всі сім аспектів: hierarchy, depth, relationships, occlusion, engraving, manufacturability, pair_consistency; verdict=pass/changes_required/not_applicable/not_checked, observation з фактичним спостереженням, suggested_action з конкретною дією для проблеми. Не давай pass_visual за неперевірені аспекти.\n'+COMPOSITION_REVIEW_GUIDANCE+'\nПЛАН\n'+JSON.stringify(result.plan),[master,preview]);
   }else {
@@ -181,7 +190,7 @@ export async function workflow({root,directory,action,project,run,signal,stage,s
     const artifact={sha256:createHash('sha256').update(bytes).digest('hex'),pixel_dimensions:png?[bytes.readUInt32BE(16),bytes.readUInt32BE(20)]:null};
     result.masterFormat={version:1,target:masterFormatSpec(p),correctionAttempted:false,pending:true,checks:[]};
     result.masterFormat.checks.push(await inspectMasterFormat({project:p,artifact,master:inputMaster,template,ask,signal}));result.masterFormat.pending=false;
-    result.review=applyFormatReview({disposition:'not_checked',findings:[],manual_checks:['Повну перевірку пари зображень ще не завершено.']},result.masterFormat);
+    result.review=applyFormatReview({disposition:'not_checked',findings:[],manual_checks:[project.panelOnly?'Повну перевірку панелі можна запустити окремо.':'Повну перевірку пари зображень ще не завершено.']},result.masterFormat);
     await save.partial?.(result);
     if(project.panelOnly){
       result.review=await textTask('review','Перевір поточну фронтальну панель за контекстом комплекту: технологію, палітру, лише чорне гравіювання, композицію. Заповни сім composition_checks; pair_consistency=not_applicable для однієї панелі. Невиміряну геометрію не вважай перевіреною.\nПЛАН\n'+JSON.stringify(project.designPlan||null),[inputMaster]);
